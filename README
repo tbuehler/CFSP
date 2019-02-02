@@ -1,9 +1,8 @@
-COMMUNITY DETECTION
-VIA CONSTRAINED FRACTIONAL SET PROGRAMMING
+CONSTRAINED FRACTIONAL SET PROGRAMMING
 
 
 This archive contains a Matlab implementation of the CFSP algorithm for 
-community detection as described in the paper
+community detection and local clustering as described in the paper
  
 T. Buehler, S. S. Rangapuram, S. Setzer and M. Hein
 Constrained fractional set programs and their application in 
@@ -25,6 +24,8 @@ RatioDCA. Compile by typing 'make' in the matlab command line.
 SHORT DOCUMENTATION
 
 For more information, type 'help functionname' in the Matlab command line.
+
+1. Constrained maximum density
 
 Usage: [dc_best, maxdens_best, gam_best, dc_all,maxdens_all,gam_all] ... 
     = community_detection(W, k1,k2,gdeg,seed,numRuns,dist_max)
@@ -49,6 +50,44 @@ maxdens_all   The densities of the corresponding communities
 gam_all       The corresponding gamma values
 
  
+2. Normalized cut, direct integration of seed subset, volume constraint via penalty term:
+
+Usage: [clusters, ncut,feasible,lambda]= vol_cnstr_ncut_subset_direct(W,k,hdeg,start,subset,gamma)
+
+Input:
+W                 Weight matrix (full graph).
+k                 Upper bound
+hdeg              Generalized degrees used in constraint.
+start             Start vector
+subset            Indices of seed subset
+gamma             Penalty parameter for volume constraint.
+
+Output:
+clusters          Thresholded vector f yielding the best objective.
+ncut              Ncut value of resulting clustering.
+feasible          True if all constraints are fulfilled.
+lambda            Corresponding objective.
+
+
+3. Normalized Cut, seed constraint and volume constraint via penalty term
+
+Usage: [clusters, ncut,feasible,lambda]= vol_cnstr_ncut_subset_penalty(W,k,hdeg,start,subset,gamma1,gamma2)
+
+Input:
+W                 Weight matrix (full graph).
+k                 Upper bound
+hdeg              Generalized degrees used in constraint.
+start             Start vector
+subset            Indices of seed subset
+gamma1             Penalty parameter for seed constraint.
+gamma2             Penalty parameter for volume constraint.
+
+Output:
+clusters          Thresholded vector f yielding the best objective.
+ncut              Ncut value of resulting clustering.
+feasible          True if all constraints are fulfilled.
+lambda            Corresponding objective.
+
  
 LICENSE
 
