@@ -1,19 +1,22 @@
-function [clusters, ncut,feasible,lambda]= vol_cnstr_ncut_subset_direct(W,k,hdeg,start,subset,gamma)
+function [clusters, ncut, feasible, lambda] = ...
+         vol_cnstr_ncut_subset_direct(W, k, h, start, subset, gam, verbosity)
 % Solves the normalized cut problem with generalized volume constraint and
 % subset constraint, where the subset constraint has been directly 
 % incorporated into the objective (leading to a problem of lower dimension) 
 % and the volume constraint has been incorporated into the objective as 
 % penalty term.
 %
-% Usage: [clusters, ncut,feasible,lambda]= vol_cnstr_ncut_subset_direct(W,k,hdeg,start,subset,gamma)
+% Usage: [clusters, ncut, feasible, lambda] = ...
+%        vol_cnstr_ncut_subset_direct(W, k, h, start, subset, gam)
 %
 % Input:
 % W                 Weight matrix (full graph).
 % k                 Upper bound
-% hdeg              Generalized degrees used in constraint.
+% h                 Generalized degree vector used in constraint.
 % start             Start vector
 % subset            Indices of seed subset
-% gamma             Penalty parameter for volume constraint.
+% gam               Penalty parameter for volume constraint.
+% verbosity Controls how much information is displayed [0-3]. Default is 1.
 %
 % Output:
 % clusters          Thresholded vector f yielding the best objective.
@@ -22,154 +25,164 @@ function [clusters, ncut,feasible,lambda]= vol_cnstr_ncut_subset_direct(W,k,hdeg
 % lambda            Corresponding objective.
 
     %%  check inputs
-    if k>sum(hdeg)
-        k=sum(hdeg);
-        fprintf('Setting k to %f\n',k);
+    if k>sum(h)
+        k=sum(h);
+        if (verbosity>1) fprintf('... Setting k to %f\n',k); end
     end
-    assert(k>=sum(hdeg(subset)),'Error! Problem is unfeasible.');
-    assert(gamma>=0,'Error! gamma cannot be negative.');
+    assert(k>=sum(h(subset)),'Error! Problem is unfeasible.');
+    assert(gam>=0,'Error! gam cannot be negative.');
+
+    if (verbosity>1) 
+        fprintf("... Solving constrained ncut problem for gam=%.5g:\n", gam);
+    end
 
     %% initialization
-    start=abs(start);
-    start=start/norm(start,2);
-    f=start;
- 
+    start = abs(start);
+    start = start/norm(start,2);
+    f = start;
+    
+    %% some helpers 
+    num = length(f);
+    deg = full(sum(W,2));
     
     %% restrict graph
-    num=length(f);
-    ind_rest=setdiff((1:num)',subset);
-    W_rest=W(ind_rest,ind_rest);
+    ind_rest = setdiff((1:num)',subset);
+    W_rest = W(ind_rest,ind_rest);
     [ix_rest, jx_rest, wval_rest] = find(W_rest);
-    f=f(ind_rest);
-    kprime=k-sum(hdeg(subset));
-    degJ=full(sum(W(ind_rest,subset),2));
+    f = f(ind_rest);
+    kprime = k-sum(h(subset));
+    degJ = full(sum(W(ind_rest,subset),2));
     totVol_rest = full(sum(sum(W(ind_rest, ind_rest))));
-    deg=full(sum(W,2));
-    
+    Deg = spdiags(deg(ind_rest),0,size(f,1),size(f,1));    
 
     %% evaluate objective
-    [lambda,indvec]=functional_vol_cnstr_ncut_subset_direct(f,gamma,... 
-        num-length(subset),k,deg(ind_rest),wval_rest,ix_rest,jx_rest, ... 
-        hdeg(ind_rest), totVol_rest, degJ);
-    inner_obj_all=0;
-    lambda_all=lambda;
+    [lambda, indvec] = functional_vol_cnstr_ncut_subset_direct(f, gam, ... 
+        num-length(subset), k, deg(ind_rest), wval_rest, ix_rest, jx_rest, ... 
+        h(ind_rest), totVol_rest, degJ);
 
+    it = 0;
+    inner_obj_all = 0;
+    lambda_all = lambda;
+    converged = false;
+    eps1 = 1E-4;
+
+    if (verbosity>1) 
+        fprintf('... it=%d\tlambda=%.5g\n',it, lambda);
+    end
 
     %% main loop
-    %fprintf('gamma=%.5g \t lambda=%.5g \n',full(gamma), lambda);
-    converged=false;
-    l=2;
     while (~converged)
+        it = it+1;
  
         % solve inner problem
-        [f_new, lambda_new,indvec_new,converged,primalobj]= ... 
-            solveInnerProblem(f,lambda,subset,k,W_rest,wval_rest,... 
-            ix_rest,jx_rest,num,deg,hdeg,ind_rest,gamma,indvec,degJ,totVol_rest);
+        [f_new, lambda_new, indvec_new, obj] = solveInnerProblem(f, lambda, ...
+           subset, k, W_rest, wval_rest, ix_rest, jx_rest, num, deg, Deg, h, ind_rest, gam, indvec, degJ, totVol_rest, verbosity>2);
+        
+        % check if converged
+        reldiff = abs(lambda_new-lambda)/lambda;
+        converged = (reldiff < eps1);       
 
+        if (verbosity>1) 
+            fprintf('... it=%d\tlambda=%10.4g\tdiff=%6.4g\tinnerobj=%10.4g\n', ...
+                it, lambda_new, reldiff, obj);
+        end
 
         % update variables
-        lambda=lambda_new;
-        f=f_new;
-        indvec=indvec_new;
+        lambda = lambda_new;
+        f = f_new;
+        indvec = indvec_new;
 
-        % store results
-        inner_obj_all(l)=primalobj;
-        lambda_all(l)=lambda_new;
-
-        l=l+1;
+        % keep track of results
+        inner_obj_all(it+1) = obj;
+        lambda_all(it+1) = lambda_new;
     end
-    %fprintf('  \n');
 
-    
     %% Perform optimal thresholding
-    [clusters_temp, ncut, lambda, feasible] = ...
-        opt_thresh_vol_cnstr_ncut_subset_direct(f_new,W_rest, ...
-        deg(ind_rest), hdeg(ind_rest),kprime, gamma,sum(deg(subset)),degJ);
-    
+    [clusters_temp, ncut_prime, lambda, feasible] = opt_thresh_vol_cnstr_ncut_subset_direct(...
+        f_new, W_rest, deg(ind_rest), h(ind_rest), kprime, gam, sum(deg(subset)), degJ);
+    ncut = ncut_prime * full(sum(sum(W)));    
+
+    if (verbosity>1) 
+        fprintf('... Result after optimal thresholding: lambda=%.5g ncut''=%.5g ncut=%.5g feasible=%d\n', ... 
+                lambda, ncut_prime, ncut, feasible);
+    end
+
     %% construct vector with respect to original graph
-    clusters=zeros(num,1);
-    clusters(subset)=1;
-    clusters(ind_rest)=clusters_temp;
+    clusters = zeros(num,1);
+    clusters(subset) = 1;
+    clusters(ind_rest) = clusters_temp;
 
     %% check if partition (S=seed set, S^c) is optimal
     if ~isempty(subset)
         clusters_subset = zeros(num,1);
         clusters_subset(subset) = 1;
-        ncut_subset = balanced_cut(W, sum(W,2), clusters_subset );
-        feasible_subset = k>=sum(hdeg(subset)); 
-        lambda_subset= functional_vol_cnstr_ncut_subset_direct( ... 
-            zeros(num-length(subset),1),gamma,num-length(subset),k, ... 
-            deg(ind_rest),wval_rest,ix_rest,jx_rest,hdeg(ind_rest), ... 
-            totVol_rest, degJ);
-        
+        ncut_subset = balanced_cut(W, sum(W,2), clusters_subset);
+        feasible_subset = k>=sum(h(subset)); 
+        if (verbosity>1) 
+            fprintf('... Edge case of empty set: ncut=%.5g feasible=%d\n', ...
+                    ncut_subset, feasible_subset);
+        end
         if feasible_subset && ncut > ncut_subset
-
             clusters = clusters_subset;
             ncut = ncut_subset;
-            feasible=feasible_subset;
-            lambda= lambda_subset;
+            feasible = feasible_subset;
+            lambda = ncut_subset;
         end
     end
-
+    if (verbosity>1) 
+        fprintf('... Final result: lambda=%.5g ncut=%.5g feasible=%d\n', ...
+                lambda, ncut, feasible);
+    end
 end
 
 
 
 %% solves the inner problem in RatioDCA
-function [f_new, lambda_new,indvec_new,converged,primalobj]=  ... 
-    solveInnerProblem(f,lambda,subset,k,W_rest,wval_rest,ix_rest,jx_rest, ... 
-    num,deg,hdeg,ind_rest,gamma,indvec,degJ,totVol_rest)
+function [f_new, lambda_new, indvec_new, obj] = solveInnerProblem(f, lambda, ...
+    subset, k, W_rest, wval_rest, ix_rest, jx_rest, num, deg, Deg, h, ind_rest, gam, indvec, degJ, totVol_rest, debug)
         
     % set parameters
-    MAXITER=1600;
-    MAXITER_start=50;
-    eps1=1E-4;
-    debug=false;
+    MAXITER = 5120;
+    MAXITER_start = 40;
 
-	% compute subgradient of subset penalty
-    indmax=zeros(size(f,1),1);
-    indmax(f==max(f))=1;
+    % compute subgradient of subset penalty
+    indmax = zeros(size(f,1),1);
+    indmax(f==max(f)) = 1 / sum(f==max(f));
     
     % compute subgradient of ncut balancing term
-    Deg = spdiags(deg(ind_rest),0,size(f,1),size(f,1));
     Pf = f - (f'*deg(ind_rest)/sum(deg(ind_rest)));
     sg_bal = Deg*sign(Pf) - deg(ind_rest)*sum( Deg*sign( Pf))/sum(deg(ind_rest));
     
     % compute constants
-    c2=gamma*indvec - degJ - (lambda/2)*totVol_rest*sg_bal ... 
+    c1 = sum(degJ);
+    c2 = gam*indvec - degJ - (lambda/2)*totVol_rest*sg_bal ... 
         - sum(deg(subset))*totVol_rest*lambda*indmax ... 
         + lambda* sum(deg(subset)) *deg(ind_rest);
-    vec=-c2;
-    c = sum(degJ);
     
+    % sanity check: compute primal obj using old f. should be close to 0
+    obj_old = 0.5 * sum(wval_rest.*abs(f(ix_rest) - f(jx_rest))) + c1 * max(f) + sum(c2.*f);
+    assert(abs(obj_old) < 1E-8);
+
     % solve inner problem with FISTA
-    [f_new1,alpha_new1,primalobj1,dualobj1,iter1,f_new,primalobj,dualobj]= ... 
-        mex_ip_vol_cnstr_ncut_subset(W_rest,2*vec,zeros(length(wval_rest),1), ... 
-        MAXITER,1E-8,4*max(sum(W_rest.^2)),2*c,MAXITER_start,debug);
-    f_new = f_new/norm(f_new);
-    
-    % in this case take last iterate
-    if primalobj==0
-        f_new=f;
-        lambda_new=lambda;
-        indvec_new=indvec;
-    else
-        [lambda_new, indvec_new]=functional_vol_cnstr_ncut_subset_direct(f_new, ... 
-            gamma,num-length(subset),k,deg(ind_rest),wval_rest,ix_rest, ...
-            jx_rest,hdeg(ind_rest), totVol_rest, degJ);
-    end
-    
-    % check if converged
-    diff=abs(lambda_new-lambda)/lambda;
-    if (diff<eps1)
-        converged=true;
-    else
-        converged=false;
-    end
+    [f_new, obj] = mex_ip_vol_cnstr_ncut_subset(W_rest, c2, ...
+        zeros(length(wval_rest),1), MAXITER, 1E-8, 4*max(sum(W_rest.^2)), c1, MAXITER_start, debug);
+    assert(obj<=0);    
 
+    % in this case, take the last result
+    if abs(obj)<=1E-15
+        f_new = f;
+        lambda_new = lambda;
+        indvec_new = indvec;
+    else
+        % sanity check: recompute primal obj
+        f_new = f_new/norm(f_new);
+        obj2 = 0.5 * sum(wval_rest.*abs(f_new(ix_rest) - f_new(jx_rest))) + c1 * max(f_new) + sum(c2.*f_new);
+        assert(abs(obj-obj2) < 1E-10 * max(abs(obj),1));
+    
+        [lambda_new, indvec_new] = functional_vol_cnstr_ncut_subset_direct(f_new, ... 
+            gam, num-length(subset), k, deg(ind_rest), wval_rest, ix_rest, ...
+            jx_rest, h(ind_rest), totVol_rest, degJ);
+    end
+    assert(lambda_new <= lambda + 1E-15);
 end
-
-
-
-    
 
