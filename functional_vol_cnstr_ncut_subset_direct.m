@@ -1,16 +1,17 @@
-function [lambda,sg]=functional_vol_cnstr_ncut_subset_direct(f,gamma,num,kprime,deg,wval_rest,ix_rest,jx_rest,hdeg, totVol_rest,deg_S)
+function [lambda, sg] = functional_vol_cnstr_ncut_subset_direct(f, gam, ...
+        num, kprime, deg, wval_rest, ix_rest, jx_rest, hdeg, totVol_rest, deg_S)
 % Computes the functional associated to the constrained normalized
 % cut problem with subset constraint and upper bound on the generalized
 % volume. The volume constraint is treated as a penalty term with 
-% parameter gamma, while the subset constraint is incorporated directly
+% parameter gam, while the subset constraint is incorporated directly
 % into the objective.
 %
-% Usage: [lambda,sg]=functional_vol_cnstr_ncut_subset_direct(f, ... 
-%       gamma, num,kprime,deg,wval_rest,ix_rest,jx_rest,hdeg, totVol_rest,deg_S)
+% Usage: [lambda, sg] = functional_vol_cnstr_ncut_subset_direct(f, gam, ...
+%       num, kprime, deg, wval_rest, ix_rest, jx_rest, hdeg, totVol_rest, deg_S)
 %
 % Input:
 % f             Input vector.
-% gamma         Parameter corresponding to volume constraint.
+% gam           Parameter corresponding to volume constraint.
 % num           Length of f (dimension of graph without seed set).
 % kprime        Upper bound on generalized volume (adjusted for seed set).
 % deg           Degree vector.
@@ -32,7 +33,7 @@ function [lambda,sg]=functional_vol_cnstr_ncut_subset_direct(f,gamma,num,kprime,
     assert(size(hdeg,1)==length(f),'Degree vector has wrong dimension.');   
 
     % Compute subgradient
-    [fsort,sortind]=sort(f);
+    [fsort, sortind] = sort(f);
     shdeg = hdeg(sortind);
     sg = zeros(num,1);
     cumvols = sum(shdeg) - [0; cumsum(shdeg(1:num-1))];
@@ -45,10 +46,9 @@ function [lambda,sg]=functional_vol_cnstr_ncut_subset_direct(f,gamma,num,kprime,
      
     % Compute functional
     Pf = f - (f'*deg/sum(deg));
-    R1 = 0.5*sum(wval_rest.*abs(f(ix_rest)-f(jx_rest))) +  sum(deg_S)*max(f);
-    R2 = deg_S'*f - gamma*f'*sg ; % sg is g - t
+    R1 = 0.5*sum(wval_rest.*abs(f(ix_rest)-f(jx_rest))) + sum(deg_S)*max(f);
+    R2 = deg_S'*f - gam*f'*sg ; % sg is g - t
     S1 = 0.5*totVol_rest* deg'*abs(Pf) + sum(deg_S)*totVol_rest*max(f);
     S2 = sum(deg_S) * deg'*f;  
     lambda = (R1-R2) / (S1-S2); 
-
 end

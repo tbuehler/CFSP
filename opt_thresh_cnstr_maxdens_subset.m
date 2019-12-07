@@ -1,58 +1,62 @@
-function dc = opt_thresh_cnstr_maxdens_subset(W, f, gdeg, k1, k2, gamma,assocJ,gvolJ,Wcut)
-% Performs optimal threwsholding of the constraint objective (with subset)
+function [dc, min_cnstr_dens] = opt_thresh_cnstr_maxdens_subset(W, f, g, ...
+                                k1, k2, gam, assocJ, gvolJ, Wcut)
+% Performs optimal thresholding of the constraint objective (with subset)
 %
-% Usage: dc = opt_thresh_cnstr_maxdens_subset(W, f, gdeg, k1, k2, gamma,assocJ,gvolJ,Wcut)
+% Usage: 
+% dc = opt_thresh_cnstr_maxdens_subset(W, f, g, k1,k2, gam, assocJ, gvolJ, Wcut)
 %
 % Input: 
 % W         The weight matrix.
 % f        	The vector to be thresholded.
-% gdeg      Generalized degrees
+% g         Generalized degrees
 % k1        Lower bound.
 % k2        Upper bound.
-% gamma     Penalty parameter gamma.
+% gam       Penalty parameter gamma.
 % assocJ    Association in the seed set
 % gvolJ     Sum of generalized degrees in seed set
 % Wcut      Part of weight matrix representing edges between seed and rest
 %
 % Output:
 % dc        Indicator vector obtained via optimal thresholding
-% 
+   
+    assert(size(f,1)==size(W,1), 'Input vector has wrong dimension.');
+    assert(size(g,1)==length(f), 'Degree vector has wrong dimension.');
+    assert(~issparse(g), 'Vector should not be sparse.');
 
-    sizeJ=size(Wcut,2);
-
+    sizeJ = size(Wcut, 2);
     num = length(f);
-    [~,indsort]=sort(f);
-    sgdeg = gdeg(indsort);
+
+    [~,ind_sort] = sort(f);
+    g_sort = g(ind_sort);
 
     cum_cards = num:-1:1;
     cum_cards = cum_cards';
 
-    Wt=W(indsort(1:num-1),indsort(1:num-1));
-    Wtu=triu(Wt,1);
-    temp=2*sum(Wtu,2)+diag(Wt) +2 * sum(W(indsort(1:num-1),indsort(num:num)),2);
-    all_assoc=sum(sum(W(indsort(1:end),indsort(1:end))))-[0;cumsum(temp)];
+    Wt = W(ind_sort(1:num-1), ind_sort(1:num-1));
+    temp = 2*sum(triu(Wt,1),2) + diag(Wt) ...
+           + 2*sum(W(ind_sort(1:num-1), ind_sort(num:num)),2);
+    all_assoc = sum(sum(W)) - [0;cumsum(temp)];
     all_assoc(all_assoc<0) = 0;
 
-
     if sizeJ>0
-        Wcut= Wcut(indsort(1:num),:);
-        cutJ= sum(Wcut,2);
-        all_cut= sum(cutJ)-[0;cumsum(cutJ)];
-        all_cut=all_cut(1:end-1);
+        Wcut = Wcut(ind_sort, :);
+        cutJ = sum(Wcut, 2);
+        all_cut = sum(cutJ) - [0;cumsum(cutJ)];
+        all_cut = all_cut(1:end-1);
 
-        all_assoc=all_assoc+assocJ + 2*all_cut;
+        all_assoc = all_assoc + assocJ + 2*all_cut;
     end
 
-    penalty_thresholds = max(0, k1 - cum_cards) + max(0, cum_cards-k2);
+    penalty_thresholds = max(0, k1 - cum_cards) + max(0, cum_cards - k2);
 
-    cumvols = sum(sgdeg) - [0; cumsum(sgdeg(1:num-1))] + gvolJ;
+    cumvols = sum(g_sort) - [0; cumsum(g_sort(1:num-1))] + gvolJ;
 
-    cnstr_dens=cumvols+ gamma* penalty_thresholds;
+    cnstr_dens = cumvols + gam * penalty_thresholds;
     cnstr_dens = cnstr_dens./all_assoc;
 
-    ind3=find(cnstr_dens==min(cnstr_dens),1);
+    min_cnstr_dens = min(cnstr_dens);
+    ind = find(cnstr_dens==min_cnstr_dens, 1);
 
-    dc=zeros(num,1);
-    dc(indsort(ind3:end))=true;
-
+    dc = zeros(num,1);
+    dc(ind_sort(ind:end)) = true;
 end
