@@ -1,33 +1,43 @@
-function [clusters, ncut, feasible, lambda] = ...
-         vol_cnstr_ncut_subset_direct(W, k, h, start, subset, gam, verbosity)
+function [clusters, ncut, feasible, lambda] = ratiodca_cnstr_ncut_direct(W, ...
+                                            k, h, start, subset, gam, verbosity)
 % Solves the normalized cut problem with generalized volume constraint and
-% subset constraint, where the subset constraint has been directly 
+% subset constraint using RatioDCA. The subset constraint has been directly 
 % incorporated into the objective (leading to a problem of lower dimension) 
 % and the volume constraint has been incorporated into the objective as 
 % penalty term.
 %
-% Usage: [clusters, ncut, feasible, lambda] = ...
-%        vol_cnstr_ncut_subset_direct(W, k, h, start, subset, gam)
+% Corresponding paper:
+% T. Buehler, S. S. Rangapuram, S. Setzer and M. Hein
+% Constrained fractional set programs and their application in local clustering 
+% and community detection
+% ICML 2013, pages 624-632 (Extended version: http://arxiv.org/abs/1306.3409)
+% 
+%
+% Usage: [clusters, ncut, feasible, lambda] = ratiodca_cnstr_ncut_direct(W, ...
+%                                           k, h, start, subset, gam, verbosity)
 %
 % Input:
-% W                 Weight matrix (full graph).
-% k                 Upper bound
-% h                 Generalized degree vector used in constraint.
-% start             Start vector
-% subset            Indices of seed subset
-% gam               Penalty parameter for volume constraint.
-% verbosity Controls how much information is displayed [0-3]. Default is 1.
+% W             Weight matrix (full graph).
+% k             Upper bound.
+% h             Generalized degree vector used in constraint.
+% start         Start vector.
+% subset        Indices of seed subset.
+% gam           Penalty parameter for volume constraint.
+% verbosity     Controls how much information is displayed [0-3]. Default is 1.
 %
 % Output:
-% clusters          Thresholded vector f yielding the best objective.
-% ncut              Ncut value of resulting clustering.
-% feasible          True if all constraints are fulfilled.
-% lambda            Corresponding objective.
+% clusters      Thresholded vector f yielding the best objective.
+% ncut          Ncut value of resulting clustering.
+% feasible      True if all constraints are fulfilled.
+% lambda        Corresponding objective.
+%
+%
+% (C)2012-19 Thomas Buehler, Syama Rangapuram, Simon Setzer and Matthias Hein
 
     %%  check inputs
     if k>sum(h)
         k=sum(h);
-        if (verbosity>1) fprintf('... Setting k to %f\n',k); end
+        if (verbosity>1); fprintf('... Setting k to %f\n',k); end
     end
     assert(k>=sum(h(subset)),'Error! Problem is unfeasible.');
     assert(gam>=0,'Error! gam cannot be negative.');
@@ -56,13 +66,10 @@ function [clusters, ncut, feasible, lambda] = ...
     Deg = spdiags(deg(ind_rest),0,size(f,1),size(f,1));    
 
     %% evaluate objective
-    [lambda, indvec] = functional_vol_cnstr_ncut_subset_direct(f, gam, ... 
-        num-length(subset), k, deg(ind_rest), wval_rest, ix_rest, jx_rest, ... 
-        h(ind_rest), totVol_rest, degJ);
+    [lambda, indvec] = lambda_cnstr_ncut_direct(f, gam, num-length(subset), k, ...
+       deg(ind_rest), wval_rest, ix_rest, jx_rest, h(ind_rest), totVol_rest, degJ);
 
     it = 0;
-    inner_obj_all = 0;
-    lambda_all = lambda;
     converged = false;
     eps1 = 1E-4;
 
@@ -91,14 +98,10 @@ function [clusters, ncut, feasible, lambda] = ...
         lambda = lambda_new;
         f = f_new;
         indvec = indvec_new;
-
-        % keep track of results
-        inner_obj_all(it+1) = obj;
-        lambda_all(it+1) = lambda_new;
     end
 
     %% Perform optimal thresholding
-    [clusters_temp, ncut_prime, lambda, feasible] = opt_thresh_vol_cnstr_ncut_subset_direct(...
+    [clusters_temp, ncut_prime, lambda, feasible] = opt_thresh_cnstr_ncut_direct(...
         f_new, W_rest, deg(ind_rest), h(ind_rest), kprime, gam, sum(deg(subset)), degJ);
     ncut = ncut_prime * full(sum(sum(W)));    
 
@@ -164,8 +167,8 @@ function [f_new, lambda_new, indvec_new, obj] = solveInnerProblem(f, lambda, ...
     assert(abs(obj_old) < 1E-8);
 
     % solve inner problem with FISTA
-    [f_new, obj] = mex_ip_vol_cnstr_ncut_subset(W_rest, c2, ...
-        zeros(length(wval_rest),1), MAXITER, 1E-8, 4*max(sum(W_rest.^2)), c1, MAXITER_start, debug);
+    [f_new, obj] = mex_ip_cnstr_ncut_subset(W_rest, c2, zeros(length(wval_rest),1), ...
+                   MAXITER, 1E-8, 4*max(sum(W_rest.^2)), c1, MAXITER_start, debug);
     assert(obj<=0);    
 
     % in this case, take the last result
@@ -179,9 +182,8 @@ function [f_new, lambda_new, indvec_new, obj] = solveInnerProblem(f, lambda, ...
         obj2 = 0.5 * sum(wval_rest.*abs(f_new(ix_rest) - f_new(jx_rest))) + c1 * max(f_new) + sum(c2.*f_new);
         assert(abs(obj-obj2) < 1E-10 * max(abs(obj),1));
     
-        [lambda_new, indvec_new] = functional_vol_cnstr_ncut_subset_direct(f_new, ... 
-            gam, num-length(subset), k, deg(ind_rest), wval_rest, ix_rest, ...
-            jx_rest, h(ind_rest), totVol_rest, degJ);
+        [lambda_new, indvec_new] = lambda_cnstr_ncut_direct(f_new, gam, num-length(subset), ...
+            k, deg(ind_rest), wval_rest, ix_rest, jx_rest, h(ind_rest), totVol_rest, degJ);
     end
     assert(lambda_new <= lambda + 1E-15);
 end

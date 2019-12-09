@@ -1,13 +1,15 @@
-function [dc, min_cnstr_dens] = opt_thresh_cnstr_maxdens_subset(W, f, g, ...
+function [dc, min_cnstr_dens] = opt_thresh_cnstr_maxdens(W, f, g, ...
                                 k1, k2, gam, assocJ, gvolJ, Wcut)
-% Performs optimal thresholding of the constraint objective (with subset)
+% Performs optimal thresholding of the constrained objective (with subset) for
+% the (generalized) maximum density subgraph problem.
 %
 % Usage: 
-% dc = opt_thresh_cnstr_maxdens_subset(W, f, g, k1,k2, gam, assocJ, gvolJ, Wcut)
+% [dc, min_cnstr_dens]  = opt_thresh_cnstr_maxdens(W, f, g, k1, k2, gam, ...
+%                                                  assocJ, gvolJ, Wcut)
 %
 % Input: 
 % W         The weight matrix.
-% f        	The vector to be thresholded.
+% f         The vector to be thresholded.
 % g         Generalized degrees
 % k1        Lower bound.
 % k2        Upper bound.
@@ -18,6 +20,8 @@ function [dc, min_cnstr_dens] = opt_thresh_cnstr_maxdens_subset(W, f, g, ...
 %
 % Output:
 % dc        Indicator vector obtained via optimal thresholding
+%
+% (C)2012-19 Thomas Buehler, Syama Rangapuram, Simon Setzer and Matthias Hein
    
     assert(size(f,1)==size(W,1), 'Input vector has wrong dimension.');
     assert(size(g,1)==length(f), 'Degree vector has wrong dimension.');

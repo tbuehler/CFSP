@@ -1,9 +1,9 @@
-function [lambda, indvec2, indvec1] = compute_lambda(f, gam, k1prime, ...
+function [lambda, indvec2, indvec1] = lambda_cnstr_maxdens(f, gam, k1prime, ...
  k2prime, deg_rest, gvolJ, degJ, assocJ, wval_rest, ix_rest, jx_rest, gdeg_rest)
 % Computes the objective of the constrained maximum density problem with
 % subset and cardinality constraints
 %
-% Usage: [lambda, indvec, indvec1] = compute_lambda(f, gam, k1prime, ...
+% Usage: [lambda, indvec, indvec1] = lambda_cnstr_maxdens(f, gam, k1prime, ...
 % k2prime, deg_rest, gvolJ, degJ, assocJ, wval_rest, ix_rest, jx_rest, gdeg_rest)
 %
 % Input: 
@@ -24,6 +24,8 @@ function [lambda, indvec2, indvec1] = compute_lambda(f, gam, k1prime, ...
 % Lambda    The objective value
 % indvec2   1 - indicator vector of k2 largest components
 % indvec1   indicator vector of k1 largest components
+%
+% (C)2012-19 Thomas Buehler, Syama Rangapuram, Simon Setzer and Matthias Hein
     
     [~, sortind] = sort(f);
     num = length(f);

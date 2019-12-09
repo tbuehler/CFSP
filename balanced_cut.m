@@ -3,6 +3,8 @@ function bcut = balanced_cut(W, gdeg, Y)
 % gdeg. The clustering is specified by Y. Also works for multiple partitions.
 %
 % Usage: bcut = balanced_cut(W, gdeg, Y)
+%
+% (C)2012-19 Thomas Buehler, Syama Rangapuram, Simon Setzer and Matthias Hein
 
     classes = unique(Y);
     k = length(classes);

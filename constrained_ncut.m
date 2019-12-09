@@ -1,37 +1,42 @@
 function [clusters, ncut, feasible, lambda, solutions] = constrained_ncut(...
          W, k, h, subset, starts, verbosity)
-% Solves the normalized cut problem with generalized volume constraint and
-% subset constraint. The subset constraint is directly incorporated into the 
-% objective (leading to a problem of lower dimension) and the volume constraint 
-% is incorporated into the objective as penalty term. The optimization problem 
-% is solved using the method RatioDCA.
+% Solves the constrained normalized cut problem with an upper bound on the
+% (generalized) volume as well as a subset constraint.
+%
+% The subset constraint is directly incorporated into the objective (leading to 
+% a problem of lower dimension) and the volume constraint is incorporated into 
+% the objective as penalty term. The optimization problem is then solved using 
+% the method RatioDCA.
 %
 % Corresponding paper:
 % T. Buehler, S. S. Rangapuram, S. Setzer and M. Hein
-% Constrained fractional set programs and their application in 
-% local clustering and community detection
-% ICML 2013, pages 624-632
-% (Extended version available at http://arxiv.org/abs/1306.3409)
+% Constrained fractional set programs and their application in local clustering 
+% and community detection
+% ICML 2013, pages 624-632 (Extended version: http://arxiv.org/abs/1306.3409)
+%
 %
 % Usage: [clusters, ncut, feasible, lambda, solutions] = ...
 %        constrained_ncut(W, k, h, subset, starts, verbosity)
 %
 % Input:
-% W                 Weight matrix (full graph).
-% k                 Upper bound
-% h                 Generalized degree vector used in constraint.
-% subset            Indices of seed subset
-% starts            Start vectors
-% verbosity         Controls how much information is displayed [0-3]. Default is 1.
+% W             Weight matrix (full graph).
+% k             Upper bound on the (generalized) volume.
+% h             Generalized degree vector used in constraint.
+% subset        Indices of seed subset.
+% starts        Start vectors.
+% verbosity     Controls how much information is displayed [0-3]. Default is 1.
 %
 % Output:
-% clusters          Thresholded vector f yielding the best objective.
-% ncut              Ncut value of resulting clustering.
-% feasible          True if all constraints are fulfilled.
-% lambda            Corresponding objective value.
-% solutions         Obtained clusters for all starting points.
+% clusters      Thresholded vector f yielding the best objective.
+% ncut          Ncut value of resulting clustering.
+% feasible      True if all constraints are fulfilled.
+% lambda        Corresponding objective value.
+% solutions     Obtained clusters for all starting points.
+%
+%
+% (C)2012-19 Thomas Buehler, Syama Rangapuram, Simon Setzer and Matthias Hein
 
-    if (nargin<6) verbosity = 1; end
+    if (nargin<6); verbosity = 1; end
 
     cur_gamma = 0;
     gamma_diff = 0.05;
@@ -123,8 +128,8 @@ end
 
 function [clusters, ncut, feasible, lambda] = solve_one_run_with_pert(W, ...
          k, h, start, subset, gam, perturbation, verbosity)
-    [clusters, ncut, feasible, lambda] = vol_cnstr_ncut_subset_direct(W, ...
-                                         k, h, start, subset, gam, verbosity);                     
+    [clusters, ncut, feasible, lambda] = ratiodca_cnstr_ncut_direct(W, k, h, ...
+                                         start, subset, gam, verbosity);                     
     if perturbation && gam > 0
         pert_probs = [0.01:0.01:0.1 0.2:0.1:1];
         for p=1:length(pert_probs) % try different perturbation probabilities 
@@ -132,7 +137,7 @@ function [clusters, ncut, feasible, lambda] = solve_one_run_with_pert(W, ...
             while pert_counter < 1 % for each prob, try until a perturbation does not improve the result
                 pert_start = clusters + pert_probs(p)* range(clusters) * randn(size(clusters,1),1);
                 [cluster_pert, ncut_pert, feasible_pert, lambda_pert] = ...
-                  vol_cnstr_ncut_subset_direct(W, k, h, pert_start, subset, gam, verbosity);
+                  ratiodca_cnstr_ncut_direct(W, k, h, pert_start, subset, gam, verbosity);
                 if (verbosity>1)
                     fprintf("... Original lambda: %.5g After perturbation with p=%.2f: %.5g\n", ...
                             lambda, pert_probs(p), lambda_pert);                 

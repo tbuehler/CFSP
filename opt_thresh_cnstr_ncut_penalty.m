@@ -1,10 +1,12 @@
-function [clusters, ncut, lambda, feasible] = ...
-    opt_thresh_vol_cnstr_ncut_subset_penalty(f, W, deg, g, h, k, ...
-                                             subset, gam1, gam2)
-% Performs optimal thresholding of the unconstrained set ratio for ncut 
-% where the volume constraint and subset constraint have been incorporated 
-% into the objective as penalty terms.
+function [clusters, ncut, lambda, feasible] = opt_thresh_cnstr_ncut_penalty(...
+                                         f, W, deg, g, h, k, subset, gam1, gam2)
+% Performs optimal thresholding of the unconstrained set ratio for ncut where
+% the volume constraint and subset constraint have been incorporated into the 
+% objective as penalty terms.
 % 
+% Usage: [clusters, ncut, lambda, feasible] = opt_thresh_cnstr_ncut_penalty(...
+%                                        f, W, deg, g, h, k, subset, gam1, gam2)
+%
 % Input:
 % f                 The vector (dimension of full graph).
 % W                 Weight matrix (full graph including seed set).
@@ -24,6 +26,8 @@ function [clusters, ncut, lambda, feasible] = ...
 %
 % If the result is feasible (volume and seed constraints are fulfilled), 
 % the objective value agrees with the ncut objective.
+%
+% (C)2012-19 Thomas Buehler, Syama Rangapuram, Simon Setzer and Matthias Hein
     
     %% make sure this is used correctly
     assert(size(f,1)==size(W,1),'Input vector has wrong dimension.');
@@ -97,5 +101,5 @@ function [clusters, ncut, lambda, feasible] = ...
     
     % just to be sure
     assert(abs(ncut-balanced_cut(W,g,clusters)/sum(sum(W)))< 1E-12);
-    if (feasible) assert(lambda==ncut); end
+    if (feasible); assert(lambda==ncut); end
 end
