@@ -61,7 +61,7 @@ For more information, type 'help functionname' in the Matlab command line.
 
 #### Usage:
 
-    [clusters, ncut,feasible,lambda]= vol_cnstr_ncut_subset_direct(W,k,hdeg,start,subset,gamma)
+    [clusters, ncut, feasible, lambda] = ratiodca_cnstr_ncut_direct(W,k,hdeg,start,subset,gamma)
 
 #### Input:
     W                 Weight matrix (full graph).
@@ -83,7 +83,7 @@ For more information, type 'help functionname' in the Matlab command line.
 
 #### Usage: 
     
-    [clusters, ncut,feasible,lambda]= vol_cnstr_ncut_subset_penalty(W,k,hdeg,start,subset,gamma1,gamma2)
+    [clusters, ncut, feasible, lambda]= ratiodca_cnstr_ncut_penalty(W,k,hdeg,start,subset,gamma1,gamma2)
 
 #### Input:
     

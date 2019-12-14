@@ -1,13 +1,13 @@
-function [lambda, sg] = functional_vol_cnstr_ncut_subset_direct(f, gam, ...
-        num, kprime, deg, wval_rest, ix_rest, jx_rest, hdeg, totVol_rest, deg_S)
+function [lambda, sg] = lambda_cnstr_ncut_direct(f, gam, num, kprime, deg, ...
+                        wval_rest, ix_rest, jx_rest, hdeg, totVol_rest, deg_S)
 % Computes the functional associated to the constrained normalized
 % cut problem with subset constraint and upper bound on the generalized
 % volume. The volume constraint is treated as a penalty term with 
 % parameter gam, while the subset constraint is incorporated directly
 % into the objective.
 %
-% Usage: [lambda, sg] = functional_vol_cnstr_ncut_subset_direct(f, gam, ...
-%       num, kprime, deg, wval_rest, ix_rest, jx_rest, hdeg, totVol_rest, deg_S)
+% Usage: [lambda, sg] = lambda_cnstr_ncut_direct(f, gam, num, kprime, deg, ...
+%                       wval_rest, ix_rest, jx_rest, hdeg, totVol_rest, deg_S)
 %
 % Input:
 % f             Input vector.
@@ -26,6 +26,8 @@ function [lambda, sg] = functional_vol_cnstr_ncut_subset_direct(f, gam, ...
 % Output:
 % lambda        Value of the functional.
 % sg            Subgradient of penalty function for the volume constraint.
+%
+% (C)2012-19 Thomas Buehler, Syama Rangapuram, Simon Setzer and Matthias Hein
 
     % make sure this is used correctly
     assert(size(f,1)==num,'Input vector has wrong dimension.');
@@ -33,7 +35,7 @@ function [lambda, sg] = functional_vol_cnstr_ncut_subset_direct(f, gam, ...
     assert(size(hdeg,1)==length(f),'Degree vector has wrong dimension.');   
 
     % Compute subgradient
-    [fsort, sortind] = sort(f);
+    [~, sortind] = sort(f);
     shdeg = hdeg(sortind);
     sg = zeros(num,1);
     cumvols = sum(shdeg) - [0; cumsum(shdeg(1:num-1))];

@@ -1,11 +1,13 @@
-function [clusters, ncut, lambda, feasible] = ...
-    opt_thresh_vol_cnstr_ncut_subset_direct(f_rest, W_rest, g_rest, ...
-                                            h_rest, kprime, gam, gvolJ, degJ)
+function [clusters, ncut, lambda, feasible] = opt_thresh_cnstr_ncut_direct(...
+                       f_rest, W_rest, g_rest, h_rest, kprime, gam, gvolJ, degJ)
 % Performs optimal thresholding of the unconstrained set ratio for ncut 
 % where the subset constraint has been directly incorporated into the 
 % objective (leading to a problem of lower dimension) and the volume 
 % constraint has been incorporated into the objective as penalty term.
 % 
+% Usage: [clusters, ncut, lambda, feasible] = opt_thresh_cnstr_ncut_direct(...
+%                      f_rest, W_rest, g_rest, h_rest, kprime, gam, gvolJ, degJ)
+%
 % Input:
 % f_rest            The vector (dimension of restricted graph).
 % W_rest            Weight matrix (graph without seed set).
@@ -27,6 +29,8 @@ function [clusters, ncut, lambda, feasible] = ...
 %
 % If the result is feasible (volume and seed constraints are fulfilled), 
 % the objective value agrees with the ncut objective.
+%
+% (C)2012-19 Thomas Buehler, Syama Rangapuram, Simon Setzer and Matthias Hein
 
     %% make sure this is used correctly
     assert(size(f_rest,1)==size(W_rest,1),'Input vector has wrong dimension.');

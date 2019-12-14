@@ -1,29 +1,39 @@
-function [dc, maxdens, lambda] = ... 
-    cnstr_maxdens_subset_single_run(W, k1, k2, gdeg, start, subset, gam, verbosity)
-% Performs one run with initialization given by start of the RatioDCA for
-% the constrained maximum density problem.
+function [dc, maxdens, lambda] = ratiodca_cnstr_maxdens(W, k1, k2, gdeg, ...
+                                 start, subset, gam, verbosity)
+% Performs one run of the RatioDCA for the constrained maximum density problem
+% with initialization given by start.
 %
-% Usage: [dc, maxdens, lambda_new] ... 
-%    = cnstr_maxdens_subset_single_run(W, k1, k2, gdeg, start, subset, gam, verbosity)
+% Corresponding paper:
+% T. Buehler, S. S. Rangapuram, S. Setzer and M. Hein
+% Constrained fractional set programs and their application in local clustering 
+% and community detection
+% ICML 2013, pages 624-632 (Extended version: http://arxiv.org/abs/1306.3409)
+%
+%
+% Usage: [dc, maxdens, lambda] = ratiodca_cnstr_maxdens(W, k1, k2, gdeg, ...
+%                                start, subset, gam, verbosity)
 %
 % Input: 
-% W         The weight matrix.
-% k1        Lower bound
-% k2        Upper bound
-% gdeg      Generalized degrees
-% subset    Index of seed set
-% gam       Penalty parameter gamma.
-% verbosity Controls how much information is displayed [0-3]. Default is 1.
+% W             The weight matrix.
+% k1            Lower bound.
+% k2            Upper bound.
+% gdeg          Generalized degrees.
+% subset        Index of seed set.
+% gam           Penalty parameter gamma.
+% verbosity     Controls how much information is displayed [0-3]. Default is 1.
 %
 % Output:
-% dc        Indicator vector of the found community
-% maxdens   The corresponding density
-% lambda    The value of the objective
+% dc            Indicator vector of the found community.
+% maxdens       The corresponding density.
+% lambda        The value of the objective.
+%
+%
+% (C)2012-19 Thomas Buehler, Syama Rangapuram, Simon Setzer and Matthias Hein
 
     % do some checks
     if k2>size(W,1)
         k2 = size(W,1);
-        if (verbosity>0) fprintf('Setting k2 to %d.\n', k2); end
+        if (verbosity>0); fprintf('Setting k2 to %d.\n', k2); end
     end
     assert(k2>length(subset),'Error: k2 has to be larger than the size of the subset');
     assert(k1>=1,'Error: k1 has to be at least 1');
@@ -37,8 +47,6 @@ function [dc, maxdens, lambda] = ...
     start = abs(start);
     start = start/norm(start,2);
     f = start;
-
-    inner_obj_all = 0;
 
     num = length(f);
     deg = sum(W,2);
@@ -79,11 +87,9 @@ function [dc, maxdens, lambda] = ...
     end
 
     % compute the value of the objective
-    [lambda, indvec, indvec1] = compute_lambda(f, gam, k1, k2, deg(ind_rest), ...
+    [lambda, indvec, indvec1] = lambda_cnstr_maxdens(f, gam, k1, k2, deg(ind_rest), ...
                    gvolJ, degJ, assocJ, wval_rest, ix_rest, jx_rest, gdeg_rest);
-    
-    lambda_all = lambda;
-    
+   
     % make some output
     if (verbosity>1)
         fprintf('... gamma=%.5g \t lambda=%.5g \n', full(gam), lambda);
@@ -115,9 +121,6 @@ function [dc, maxdens, lambda] = ...
         f = f_new;
         indvec = indvec_new;
         indvec1 = indvec_new1;
-
-        inner_obj_all(it+1) = obj;
-        lambda_all(it+1) = lambda_new;
     end
 
     % make some output
@@ -126,9 +129,8 @@ function [dc, maxdens, lambda] = ...
     end
 
     % perform optimal thresholding
-    dc_temp = opt_thresh_cnstr_maxdens_subset(W_rest, f_new, ...
-                  gdeg(ind_rest), max(1, k1prime), k2prime, gam, ...
-                  assocJ, sum(gdeg(subset)), W(ind_rest, subset));
+    dc_temp = opt_thresh_cnstr_maxdens(W_rest, f_new, gdeg(ind_rest), max(1, k1prime), ...
+              k2prime, gam, assocJ, sum(gdeg(subset)), W(ind_rest, subset));
     dc = ones(size(W,1),1);
     dc(ind_rest) = dc_temp>0;
     maxdens = full(sum(sum(W(dc==1, dc==1))) / sum(gdeg(dc>0)));
@@ -160,7 +162,7 @@ function [f_new, lambda_new, indvec_new, indvec_new1, obj] = ...
     assert(abs(obj_old) < 1E-8);
 
     % solve inner problem
-    [f_new, obj] = mex_IP_maxdens_FISTA(W_rest, c2, zeros(num,1), ...
+    [f_new, obj] = mex_ip_cnstr_maxdens(W_rest, c2, zeros(num,1), ...
                                         MAXITER, L, lambda, c1, debug);
     assert(obj<=0);
    
@@ -186,8 +188,7 @@ function [f_new, lambda_new, indvec_new, indvec_new1, obj] = ...
                c1*max(f_new) + f_new'*c2;
         assert(abs(obj-obj2) < 1E-10 * max(abs(obj),1));
 
-        [lambda_new, indvec_new, indvec_new1] = ... 
-            compute_lambda(f_new, gam, k1prime, k2prime, deg(ind_rest), ...
-                gvolJ, degJ, assocJ, wval_rest, ix_rest, jx_rest, gdeg_rest);
+        [lambda_new, indvec_new, indvec_new1] = lambda_cnstr_maxdens(f_new, gam, k1prime, ...
+            k2prime, deg(ind_rest), gvolJ, degJ, assocJ, wval_rest, ix_rest, jx_rest, gdeg_rest);
     end
 end
