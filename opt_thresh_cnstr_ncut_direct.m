@@ -41,7 +41,7 @@ function [clusters, ncut, lambda, feasible] = opt_thresh_cnstr_ncut_direct(...
     assert(~issparse(degJ),'Vector should not be sparse.');
 
     %% sort vector f, and everything else accordingly
-    [f_sort, ind_sort] = sort(f_rest);
+    [~, ind_sort] = sort(f_rest);
     W_sort = W_rest(ind_sort, ind_sort);
     g_sort = g_rest(ind_sort);
     h_sort = h_rest(ind_sort);
@@ -74,7 +74,6 @@ function [clusters, ncut, lambda, feasible] = opt_thresh_cnstr_ncut_direct(...
     cuts_thresh1 = cuts_thresh + [0;cumsum(degJ_sort)];
     gvol_compl_thresh1 = gvol_compl_thresh;
     gvol_thresh1 = gvol_thresh + gvolJ;
-    hvol_thresh1 = hvol_thresh;
         
     % Case 2: C_i = C'_i, V-C_i = V'-C'_i + J
     % In this case the total cut is cut(C'_i, V'-C'_i) + cut(C'_i,J).
@@ -83,31 +82,27 @@ function [clusters, ncut, lambda, feasible] = opt_thresh_cnstr_ncut_direct(...
     % kprime is already adjusted for the restricted graph).
     cuts_thresh2 = cuts_thresh + sum(degJ_sort) - [0;cumsum(degJ_sort)];
     gvol_compl_thresh2 = gvol_compl_thresh + gvolJ;
-    gvol_thresh2 = gvol_thresh;
     hvol_thresh2 = sum(h_sort) - hvol_thresh;
 
-    %% compute best threshold
-    % Extract all possible thresholds. In order to also allow 
-    % the empty set, we need to add an additional n+1th threshold.
-    [f_unique, ind_unique] = unique([f_sort; max(f_sort)+1], 'first');
-    
     % Compute best threshold for case 1
     [lambda1, ind_thresh1, feasible1, ncut1] = find_best_thresh(cuts_thresh1,...
-       gvol_compl_thresh1, gvol_thresh1, hvol_thresh1, ind_unique, kprime, gam);
+                   gvol_compl_thresh1, gvol_thresh1, hvol_thresh, kprime, gam);
     
     % Compute best threshold for case 2
     [lambda2, ind_thresh2, feasible2, ncut2] = find_best_thresh(cuts_thresh2,...
-       gvol_compl_thresh2, gvol_thresh2, hvol_thresh2, ind_unique, kprime, gam);
+                   gvol_compl_thresh2, gvol_thresh, hvol_thresh2, kprime, gam);
         
     % check which is better
     if (lambda1<lambda2)
         lambda = lambda1;
-        clusters = double(f_rest>=f_unique(ind_thresh1));
+        clusters = zeros(size(f_rest,1), 1);
+        clusters(ind_sort(ind_thresh1:end)) = 1;
         feasible = feasible1;
         ncut = ncut1;
     else
         lambda = lambda2;
-        clusters = double(f_rest<f_unique(ind_thresh2));
+        clusters = zeros(size(f_rest,1), 1);
+        clusters(ind_sort(1:ind_thresh2-1)) = 1;
         feasible = feasible2;
         ncut = ncut2;
     end    
@@ -117,13 +112,7 @@ end
 % compute the best threshold according to the ncut objective with subset 
 % incorporated and hvol constraint as penalty
 function [obj, ind_thresh, feasible, ncut] = find_best_thresh(cuts_thresh, ...
-         gvol_compl_thresh, gvol_thresh, hvol_thresh, ind_unique, kprime, gam)
-
-    % extract the values for thresholding at all the unique indices
-    cuts_thresh = cuts_thresh(ind_unique);
-    gvol_compl_thresh = gvol_compl_thresh(ind_unique);
-    gvol_thresh = gvol_thresh(ind_unique);
-    hvol_thresh = hvol_thresh(ind_unique);
+         gvol_compl_thresh, gvol_thresh, hvol_thresh, kprime, gam)
 
     % compute objective for different thresholds
     balance_thresh = gvol_compl_thresh.*gvol_thresh;

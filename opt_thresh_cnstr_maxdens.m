@@ -58,9 +58,8 @@ function [dc, min_cnstr_dens] = opt_thresh_cnstr_maxdens(W, f, g, ...
     cnstr_dens = cumvols + gam * penalty_thresholds;
     cnstr_dens = cnstr_dens./all_assoc;
 
-    min_cnstr_dens = min(cnstr_dens);
-    ind = find(cnstr_dens==min_cnstr_dens, 1);
-
+    [min_cnstr_dens, ind] = min(cnstr_dens);
+    
     dc = zeros(num,1);
     dc(ind_sort(ind:end)) = true;
 end

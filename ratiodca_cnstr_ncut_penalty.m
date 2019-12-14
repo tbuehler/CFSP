@@ -112,8 +112,6 @@ function [clusters, ncut, feasible, lambda] = ratiodca_cnstr_ncut_penalty(W, ...
   
     if gam1==0 && gam2==0
         assert( abs(ncut/sum(sum(W)) - lambda) <= 1e-8 );
-    else
-        assert(  lambda - lambda_thresh >= -1e-8 ); 
     end
     if (verbosity>1) 
         fprintf('... Final result:\tlambda=%.5g ncut=%.5g feasible=%d\n', ...

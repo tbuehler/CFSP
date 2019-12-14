@@ -83,7 +83,8 @@ function [clusters, ncut, feasible, lambda] = ratiodca_cnstr_ncut_direct(W, ...
  
         % solve inner problem
         [f_new, lambda_new, indvec_new, obj] = solveInnerProblem(f, lambda, ...
-           subset, k, W_rest, wval_rest, ix_rest, jx_rest, num, deg, Deg, h, ind_rest, gam, indvec, degJ, totVol_rest, verbosity>2);
+           subset, k, W_rest, wval_rest, ix_rest, jx_rest, num, deg, Deg, ...
+           h, ind_rest, gam, indvec, degJ, totVol_rest, verbosity>2);
         
         % check if converged
         reldiff = abs(lambda_new-lambda)/lambda;
@@ -115,6 +116,10 @@ function [clusters, ncut, feasible, lambda] = ratiodca_cnstr_ncut_direct(W, ...
     clusters(subset) = 1;
     clusters(ind_rest) = clusters_temp;
 
+    % sanity checks
+    assert ( abs(balanced_cut(W, sum(W,2), clusters) - ncut) <= 1e-8 );
+    assert ( feasible == (sum(h(clusters==1))<=k && sum(clusters(subset))==length(subset)) );
+
     %% check if partition (S=seed set, S^c) is optimal
     if ~isempty(subset)
         clusters_subset = zeros(num,1);
@@ -142,7 +147,8 @@ end
 
 %% solves the inner problem in RatioDCA
 function [f_new, lambda_new, indvec_new, obj] = solveInnerProblem(f, lambda, ...
-    subset, k, W_rest, wval_rest, ix_rest, jx_rest, num, deg, Deg, h, ind_rest, gam, indvec, degJ, totVol_rest, debug)
+         subset, k, W_rest, wval_rest, ix_rest, jx_rest, num, deg, Deg, h, ...
+         ind_rest, gam, indvec, degJ, totVol_rest, debug)
         
     % set parameters
     MAXITER = 5120;
