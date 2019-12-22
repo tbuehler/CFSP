@@ -110,7 +110,6 @@ void mexFunction(int nlhs, mxArray *plhs[],
                 counter++;
             }
         }
-        for (j=0; j< len; j++) { X[j] = 0.5* X[j]; }  
  
         // compute D = (-Aalpha-c2) / c1
         for(i=0; i<len; i++) { 
@@ -175,7 +174,6 @@ void mexFunction(int nlhs, mxArray *plhs[],
                     counter++;
                 }
             }
-            for (j=0; j< len; j++) { X[j] = 0.5* X[j]; }  
         
             // compute D = (-Aalpha-c2) / c1
             for(i=0; i<len; i++) { 
@@ -212,7 +210,6 @@ void mexFunction(int nlhs, mxArray *plhs[],
                     counter++;
                 }	  
             }
-            primalVal_orig = 0.5*primalVal_orig;
                     
             // c_1 max_f
             max_f = 0;

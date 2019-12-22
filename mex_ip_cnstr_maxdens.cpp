@@ -108,7 +108,7 @@ void mexFunction(int nlhs, mxArray *plhs[],
         
         // compute D = (-c2- lambda Aalpha) / c1
         for(i=0; i<len; i++) {
-            D[i] = (-c2[i]-lambda*0.5*X[i])/c1;
+            D[i] = (-c2[i]-lambda*X[i])/c1;
             if (D[i]<0) Dproj[i]=0;
             else Dproj[i]=D[i];
         }
@@ -161,7 +161,7 @@ void mexFunction(int nlhs, mxArray *plhs[],
             
             // compute D = (-c2- lambda Aalpha) / c1
             for(i=0; i<len; i++) {
-                D[i] = (-c2[i]-lambda*0.5*X[i])/c1;
+                D[i] = (-c2[i]-lambda*X[i])/c1;
                 if (D[i]<0) Dproj2[i]=0;
                 else Dproj2[i]=D[i];
             }
@@ -190,7 +190,7 @@ void mexFunction(int nlhs, mxArray *plhs[],
                     counter++;
                 }
             }
-            primalVal_orig = lambda * 0.5 * primalVal_orig;
+            primalVal_orig = lambda * primalVal_orig;
 
             // c1 max_f
             max_f = 0;

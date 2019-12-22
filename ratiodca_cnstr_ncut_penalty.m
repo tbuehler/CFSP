@@ -52,6 +52,8 @@ function [clusters, ncut, feasible, lambda] = ratiodca_cnstr_ncut_penalty(W, ...
     totVol = full(sum(sum(W)));
     [ix,jx,wval] = find(W);
     Deg = spdiags(deg, 0, size(f,1), size(f,1));
+    W_triu = triu(W,1);
+    L = 4*max(sum(W.^2));
 
     %% evaluate objective
     f(subset) = max(f);
@@ -71,7 +73,7 @@ function [clusters, ncut, feasible, lambda] = ratiodca_cnstr_ncut_penalty(W, ...
         
         % solve inner problem
         [f_new, lambda_new, indvec_new, obj] = solveInnerProblem(f, lambda, ...
-           subset, k, W, wval, ix, jx, num, deg, Deg, h, gam1, gam2, indvec, totVol, verbosity>2);
+           subset, k, W_triu, wval, ix, jx, num, deg, Deg, h, gam1, gam2, indvec, totVol, L, verbosity>2);
                 
         % check if converged
         reldiff = abs(lambda_new-lambda)/lambda;
@@ -123,7 +125,7 @@ end
 
 %% solves the inner problem in RatioDCA
 function [f_new, lambda_new, indvec_new, obj] = solveInnerProblem(f, lambda, ...
-         subset, k, W, wval, ix, jx, num, deg, Deg, h, gam1, gam2, indvec, totVol, debug)
+         subset, k, W_triu, wval, ix, jx, num, deg, Deg, h, gam1, gam2, indvec, totVol, L, debug)
        
     % set parameters
     MAXITER = 5120;
@@ -147,11 +149,11 @@ function [f_new, lambda_new, indvec_new, obj] = solveInnerProblem(f, lambda, ...
 
     % solve inner problem with FISTA
     if gam1 ~= 0
-        [f_new, obj] = mex_ip_cnstr_ncut_subset(W, c2, zeros(length(wval),1), ...
-                       MAXITER, 1E-8, 4*max(sum(W.^2)), c1, MAXITER_start, debug);
+        [f_new, obj] = mex_ip_cnstr_ncut_subset(W_triu, c2, zeros(nnz(W_triu),1), ...
+                       MAXITER, 1E-8, L, c1, MAXITER_start, debug);
     else
-        [f_new, obj] = mex_ip_cnstr_ncut(W, c2, zeros(length(wval),1), ...
-                       MAXITER, 1E-8, 4*max(sum(W.^2)), MAXITER_start, debug);
+        [f_new, obj] = mex_ip_cnstr_ncut(W_triu, c2, zeros(nnz(W_triu),1), ...
+                       MAXITER, 1E-8, L, MAXITER_start, debug);
     end
     assert(obj<=0);
 
