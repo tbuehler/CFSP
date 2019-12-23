@@ -6,7 +6,6 @@
 #include <math.h>
 #include "mex.h"
 #include "matrix.h"
-#include <time.h>
 #include "float.h"
 
 double* ProjKSimplex(double*, int, int);
@@ -68,7 +67,6 @@ void mexFunction(int nlhs, mxArray *plhs[],
     double* X = new double[len];
     double* D = new double[len];
     double* Dproj = new double[len];
-    double* Dproj2 = new double[len];
     double* DprojBest = new double[len];
     double* beta = new double[lenalpha];
     double* betaold = new double[lenalpha];
@@ -77,25 +75,19 @@ void mexFunction(int nlhs, mxArray *plhs[],
     for(i=0; i<lenalpha; i++) { betaold[i] = 0; }
     for(i=0; i<len; i++) { DprojBest[i] = 0; }
 
-    double temp, primalVal2;
+    double temp, max_f;
     double primalVal = 0, primalValBest = 0, primalVal_orig = 0;
-    double max_f;
 
-    clock_t start, ende;
-    float time1 = 0, time2 = 0, time3 = 0, time4 = 0;
-    
     unsigned int MAXITER_temp=50;
     Fval=-DBL_MAX;
    
     //main loop
-    while(iter< (unsigned int) MAXITER) {
-        iter++;
-
+    while(iter<= (unsigned int) MAXITER) {
         // exchange beta and betaold
         dummyPointer = beta; beta = betaold; betaold = dummyPointer;
-       
+ 
         // compute X=Aalpha
-        for(i=0; i<len; i++) { X[i]=0; }
+        for(i=0; i<len; i++) { X[i] = 0; }
         counter = 0;
         for(j=0; j<cols; j++) {
             for(i=0; i<jcs[j+1]-jcs[j]; i++) {
@@ -105,152 +97,99 @@ void mexFunction(int nlhs, mxArray *plhs[],
                 counter++;
             }
         }
-        
+ 
         // compute D = (-c2- lambda Aalpha) / c1
         for(i=0; i<len; i++) {
             D[i] = (-c2[i]-lambda*X[i])/c1;
-            if (D[i]<0) Dproj[i]=0;
-            else Dproj[i]=D[i];
+            if (D[i]<0) Dproj[i] = 0;
+            else Dproj[i] = D[i];
         }
-
-        // project onto simplex
         Dproj = ProjKSimplex(Dproj, len, 1);
-        
+
         for (i=0;i<len;i++) {
             Dproj[i] = (D[i]-Dproj[i])*c1;
             if (Dproj[i]<0) Dproj[i] = 0;
         }
-        // z computed
 
-        // update beta and alpha
-        counter = 0;
-        //tnew = (1 + sqrt(1+4*told*told))/2;
-        //factor = (told-1)/tnew;
-        factor = (double) iter/(iter+3);
-        for(j=0; j<cols; j++) {
-            Dcur = Dproj[j];
-            for(i=0; i<jcs[j+1]-jcs[j]; i++) {
-                temp = sr[counter]*( Dproj[irs[counter]] - Dcur);
-                // update of beta
-                betacur = alpha[counter] + lamByL*temp;
-                // projection onto l_inf-cube
-                if(betacur>1) betacur = 1;
-                else if(betacur<-1) betacur = -1;
-                beta[counter] = betacur;
-                // update of alpha
-                alpha[counter] = betacur + factor*(betacur-betaold[counter]);
-                counter++;
-            }
-        }
-        
-        // compute primal and dual objective
-        if (iter==1 || iter==MAXITER_temp || iter== (unsigned int) MAXITER) {
-            start = clock();
-       
-            // compute X=Aalpha
-            for(i=0; i<len; i++) { X[i] = 0; }
-            counter = 0;
-            for(j=0; j<cols; j++) {
-                for(i=0; i<jcs[j+1]-jcs[j]; i++) {
-                    dummy = sr[counter]*beta[counter];
-                    X[j] -= dummy;
-                    X[irs[counter]] += dummy;
-                    counter++;
-                }
-            }
-            
-            // compute D = (-c2- lambda Aalpha) / c1
-            for(i=0; i<len; i++) {
-                D[i] = (-c2[i]-lambda*X[i])/c1;
-                if (D[i]<0) Dproj2[i]=0;
-                else Dproj2[i]=D[i];
-            }
-            
-            // project on simplex
-            Dproj2 = ProjKSimplex(Dproj2, len, 1);
-            
-            for (i=0;i<len;i++) {
-                Dproj2[i] = (D[i]-Dproj2[i])*c1;
-                if (Dproj2[i]<0) Dproj2[i] = 0;
-            }
-    
+        // compute primal and dual objective and check if converged
+        if (iter==0 || iter==MAXITER_temp || iter== (unsigned int) MAXITER) {
             // compute dual objective
             normD = 0;
-            for(i=0; i<len; i++) { normD += Dproj2[i]*Dproj2[i]; }
+            for(i=0; i<len; i++) { normD += Dproj[i]*Dproj[i]; }
             Fval = -normD;
-                        
-            // compute primal objective (original)
+
+            // compute original inner objective
+            primalVal_orig = 0;            
             counter = 0;
-            primalVal_orig = 0;
-            // 0.5 sum w_ij |f_i - f_j|
             for(j=0; j<cols; j++) {
-                Dcur = Dproj2[j];
+                Dcur = Dproj[j];
                 for(i=0; i<jcs[j+1]-jcs[j]; i++) {
-                    primalVal_orig += fabs(sr[counter]*( Dproj2[irs[counter]] - Dcur));
+                    primalVal_orig += fabs(sr[counter]*( Dproj[irs[counter]] - Dcur));
                     counter++;
                 }
             }
             primalVal_orig = lambda * primalVal_orig;
 
-            // c1 max_f
             max_f = 0;
             for (i=0; i<len; i++) {
-                if (Dproj2[i]>max_f)
-                    max_f = Dproj2[i];
+                if (Dproj[i]>max_f)
+                    max_f = Dproj[i];
             }
             primalVal_orig += c1*max_f;
 
-            // <c2,f>
-            for (i=0;i<len; i++) {
-                primalVal_orig += Dproj2[i]*c2[i];
+            for (i=0; i<len; i++) {
+                primalVal_orig += Dproj[i]*c2[i];
             }
+
+            // compute modified primal objective
             primalVal = primalVal_orig + 0.5*normD;
 
-
             if (normD >0) {
-                primalVal_orig = primalVal_orig/ sqrt(normD);
+                primalVal_orig = primalVal_orig / sqrt(normD);
             } else {
                 primalVal_orig = 0;
             }
-            
+
             // check if we are better than previous best one
             if (primalVal_orig<primalValBest) {
                 primalValBest = primalVal_orig;
-                for(i=0; i<len; i++) {
-                    DprojBest[i] = Dproj2[i];
-                }
+                for(i=0; i<len; i++) { DprojBest[i] = Dproj[i]; }
             }
-                        
-            ende = clock();
-            time4+=(float) (ende-start);
-            
-            // output values
+
             if (debug) {
                 mexPrintf("...... it=%i\tinnerobj=%1.6f\tprimalobj=%1.6f\tdualobj=%1.6f\tgap=%1.6f\n",
                           iter, primalVal_orig, primalVal, Fval, primalVal-Fval);
             }
 
-            // check if converged
             if (primalVal<0)
                 break;
             else if(iter==MAXITER_temp) 
-                MAXITER_temp = MAXITER_temp*2; 
+                MAXITER_temp = MAXITER_temp*2;
         }
+
+        // update beta and alpha
+        counter = 0;
+        factor = (double) iter/(iter+3);
+        for(j=0; j<cols; j++) {
+            Dcur = Dproj[j];
+            for(i=0; i<jcs[j+1]-jcs[j]; i++) {
+                temp = sr[counter]*( Dproj[irs[counter]] - Dcur);
+                betacur = alpha[counter] + lamByL*temp;
+                if(betacur>1) betacur = 1;
+                else if(betacur<-1) betacur = -1;
+                beta[counter] = betacur;
+                alpha[counter] = betacur + factor*(betacur-betaold[counter]);
+                counter++;
+            }
+        }
+        iter++;
     }
-    
-    // output final results
-    if (debug) {
-        mexPrintf("...... time1: %.2f   time2: %.2f  time3: %.2f   time4: %.2f\n",
-                  time1 / (float)CLOCKS_PER_SEC, time2 / (float)CLOCKS_PER_SEC, time3 / (float)CLOCKS_PER_SEC, time4 / (float)CLOCKS_PER_SEC);
-        mexPrintf("...... FINAL it=%i\tinnerobj=%1.6f\tprimalobj=%1.6f\tdualobj=%1.6f\tgap=%1.6f\n",
-                  iter, primalVal_orig, primalVal, Fval, primalVal-Fval);
-    }
-    
-    // write output
+
     for(i=0; i<len; i++) { Xbest[i] = DprojBest[i]; }
     PrimalObjBest[0] = primalValBest;
-    delete[] X; delete[] betaold; delete[] beta; delete[] Dproj; delete[] Dproj2; delete[] DprojBest; delete[] D;
+    delete[] X; delete[] betaold; delete[] beta; delete[] Dproj; delete[] DprojBest; delete[] D;
 }
+
 
 
 // projection on the k simplex
