@@ -175,8 +175,13 @@ function [f_new, lambda_new, indvec_new, obj] = solveInnerProblem(f, lambda, ...
     assert(abs(obj_old) < 1E-8);
 
     % solve inner problem with FISTA
-    [f_new, obj] = mex_ip_cnstr_ncut_subset(W_triu, c2, zeros(nnz(W_triu),1), ...
-                   MAXITER, 1E-8, L, c1, MAXITER_start, debug);
+    if (c1~=0)
+        [f_new, obj] = mex_ip_cnstr_ncut_subset(W_triu, c2, zeros(nnz(W_triu),1), ...
+                       MAXITER, 1E-8, L, c1, MAXITER_start, debug);
+    else
+        [f_new, obj] = mex_ip_cnstr_ncut(W_triu, c2, zeros(nnz(W_triu),1), ...
+                       MAXITER, 1E-8, L, MAXITER_start, debug);
+    end
     assert(obj<=0);    
 
     % in this case, take the last result

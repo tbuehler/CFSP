@@ -9,11 +9,10 @@ function bcut = balanced_cut(W, gdeg, Y)
     classes = unique(Y);
     k = length(classes);
     bcut = 0;
-    n = size(W,1);
 
     for i=1:k
         jx = find(Y==classes(i));
-        jxc = setdiff(1:n, jx);
+        jxc = find(Y~=classes(i));
 
         cut = sum(sum(W(jx, jxc)));
         vol = sum(gdeg(jx));
