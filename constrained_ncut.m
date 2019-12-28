@@ -1,5 +1,5 @@
 function [clusters, ncut, feasible, lambda, solutions] = constrained_ncut(...
-         W, k, h, subset, starts, verbosity)
+         W, k, h, subset, nRuns, verbosity)
 % Solves the constrained normalized cut problem with an upper bound on the
 % (generalized) volume as well as a subset constraint.
 %
@@ -16,14 +16,14 @@ function [clusters, ncut, feasible, lambda, solutions] = constrained_ncut(...
 %
 %
 % Usage: [clusters, ncut, feasible, lambda, solutions] = ...
-%        constrained_ncut(W, k, h, subset, starts, verbosity)
+%        constrained_ncut(W, k, h, subset, nRuns, verbosity)
 %
 % Input:
 % W             Weight matrix (full graph).
 % k             Upper bound on the (generalized) volume.
 % h             Generalized degree vector used in constraint.
 % subset        Indices of seed subset.
-% starts        Start vectors.
+% nRuns         Number of runs with random initialization. Default is 10.
 % verbosity     Controls how much information is displayed [0-3]. Default is 1.
 %
 % Output:
@@ -37,14 +37,15 @@ function [clusters, ncut, feasible, lambda, solutions] = constrained_ncut(...
 % (C)2012-19 Thomas Buehler, Syama Rangapuram, Simon Setzer and Matthias Hein
 
     if (nargin<6); verbosity = 1; end
+    if (nargin<5); nRuns = 10; end
 
     cur_gamma = 0;
     gamma_diff = 0.05;
     num_gammas = 1;
     satisfied = false;
-    nRuns = size(starts,2);
     num = size(W,1);
     perturbation = false;    
+    starts = randn(num, nRuns);
         
     lambdas = zeros(nRuns, num_gammas);
     ncuts_temp = zeros(nRuns, num_gammas);
