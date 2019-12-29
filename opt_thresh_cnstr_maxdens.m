@@ -38,7 +38,7 @@ function [dc, min_cnstr_dens] = opt_thresh_cnstr_maxdens(W, f, g, ...
 
     Wt = W(ind_sort(1:num-1), ind_sort(1:num-1));
     temp = 2*sum(triu(Wt,1),2) + diag(Wt) ...
-           + 2*sum(W(ind_sort(1:num-1), ind_sort(num:num)),2);
+           + 2*sum(W(ind_sort(1:num-1), ind_sort(num)),2);
     all_assoc = sum(sum(W)) - [0;cumsum(temp)];
     all_assoc(all_assoc<0) = 0;
 

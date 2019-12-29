@@ -148,11 +148,9 @@ function [f_new, lambda_new, indvec_new, indvec_new1, obj] = ...
          assocJ, k1prime, k2prime, gvolJ, degJ, L, debug)
 
     % some parameters
-    MAXITER = 1600;%800;
+    MAXITER = 1600;
 
     % compute constants
-    indmax = zeros(size(f,1),1);
-    indmax(f==max(f)) = 1 / sum(f==max(f));
     c2 = gdeg_rest - gam*indvec1 + gam*indvec - lambda*deg_tilde;
     c1 = k1prime*gam + gvolJ - lambda*assocJ;
    
@@ -165,13 +163,6 @@ function [f_new, lambda_new, indvec_new, indvec_new1, obj] = ...
                                         MAXITER, lambda^2 * L, lambda, c1, debug);
     assert(obj<=0);
    
-    % recompute dual objective (for testing)    
-    if (debug)
-        dualval2 = -norm(f_new)^2;
-    else 
-        dualval2 = inf;
-    end
-    
     % renormalize
     f_new = f_new/norm(f_new);
 
