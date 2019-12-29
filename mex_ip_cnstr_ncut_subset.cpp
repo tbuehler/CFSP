@@ -6,7 +6,6 @@
 #include <math.h>
 #include "mex.h"
 #include "matrix.h"
-#include <time.h>
 #include "float.h"
 
 double* ProjKSimplex(double*, int, int);
@@ -37,11 +36,10 @@ void mexFunction(int nlhs, mxArray *plhs[],
     mwIndex* irs = mxGetIr(prhs[0]);   // get row
     mwIndex* jcs = mxGetJc(prhs[0]);   // get columns
   
-    double* c2 = mxGetPr(prhs[1]);     // c2
-    double* alpha = mxGetPr(prhs[2]);  // alpha
-
+    double* c2 = mxGetPr(prhs[1]);           // c2
+    double* alpha = mxGetPr(prhs[2]);  	     // alpha
     mwIndex MAXITER = mxGetScalar(prhs[3]); 
-    double EPS = mxGetScalar(prhs[4]); //for criterion fabs(dualval)<EPS
+    double EPS = mxGetScalar(prhs[4]);       //for criterion fabs(dualval)<EPS
     double MaxSumSquaredWeights = mxGetScalar(prhs[5]); 
     double c1 = mxGetScalar(prhs[6]); 
     mwIndex MAXITER_temp = mxGetScalar(prhs[7]); 
@@ -49,7 +47,6 @@ void mexFunction(int nlhs, mxArray *plhs[],
 
     if(MaxSumSquaredWeights<=0) {
         mexErrMsgTxt("Lipschitz constant has to be positive");
-        return;
     }
 
     // allocate memory for output
@@ -69,33 +66,21 @@ void mexFunction(int nlhs, mxArray *plhs[],
     double* X = new double[len];
     double* D = new double[len];
     double* Dproj = new double[len];
-    double* Dproj2 = new double[len];
     double* DprojBest = new double[len];
     double* beta = new double[lenalpha];
     double* betaold = new double[lenalpha];
-    
+
     for(i=0; i<lenalpha; i++) { beta[i] = 0; }
     for(i=0; i<lenalpha; i++) { betaold[i] = 0; }
-    for(i=0; i<len; i++) DprojBest[i] = 0;
-    
-    double temp, primalVal2, primalVal_orig;
+    for(i=0; i<len; i++) { DprojBest[i] = 0; }
+
+    double temp, max_f, primalVal_orig;
     double primalVal = 0;
-    double primalValBest = 0; double max_f;
-    bool computeObjective;
-
-    //double C = 0;
-    //for(i=0;i<len;i++) { C += c2[i]*c2[i]; }
-    //C = 0.5*C;
-
-    clock_t start, ende;
-    float time1 = 0, time2 = 0, time3 = 0, time4 = 0;
+    double primalValBest = 0;
 
     // main loop
     Fval = EPS+1;
-    while(iter<MAXITER) {
-        iter++;
-        start=clock();
-
+    while(iter<=MAXITER) {
         // exchange beta and betaold
         dummyPointer = beta; beta = betaold; betaold = dummyPointer;
  
@@ -110,32 +95,75 @@ void mexFunction(int nlhs, mxArray *plhs[],
                 counter++;
             }
         }
-        for (j=0; j< len; j++) { X[j] = 0.5* X[j]; }  
  
         // compute D = (-Aalpha-c2) / c1
-        for(i=0; i<len; i++) { 
+        for(i=0; i<len; i++) {
             D[i] = (-X[i]-c2[i])/c1;
-        
-            //Dproj[i]=(Y[i]-lambda*X[i])/c1; 
-            //if (Dproj[i]<0) {Dproj[i]=0;}
-            // Dproj[i] = D[i];  
             if (D[i]<0) Dproj[i] = 0;
             else Dproj[i] = D[i];
         }
-    
         Dproj = ProjKSimplex(Dproj, len, 1);
 
-        ende = clock();
-        time1 += (float) (ende-start);
-        start=clock();
-   
-        // This projection is for the gradient.
+        // this projection is for the gradient.
         for (i=0; i<len; i++) {
-            // Dproj[i] = Dproj[i] * c1;
             Dproj[i] = (D[i]-Dproj[i])*c1;
             if (Dproj[i]<0) Dproj[i] = 0;
         }
-        // z computed
+   
+        // compute primal and dual objective and check if converged
+        if (iter==0 || iter==MAXITER_temp || iter==MAXITER) {
+            // compute dual objective
+            normD = 0;
+            for(i=0; i<len; i++) { normD += Dproj[i]*Dproj[i]; }
+            Fval = -normD;
+
+            // compute original inner objective
+            primalVal_orig = 0;
+            counter = 0;
+            for(j=0; j<cols; j++) {
+                Dcur = Dproj[j];
+                for(i=0; (unsigned int) i<jcs[j+1]-jcs[j]; i++) {
+                    primalVal_orig += fabs(sr[counter]*( Dproj[irs[counter]] - Dcur));
+                    counter++;
+                }
+            }
+
+            max_f = 0;
+            for (i=0; i<len; i++) {
+                if (Dproj[i]>max_f)
+                    max_f = Dproj[i];
+            }
+            primalVal_orig += c1*max_f;
+
+            for (i=0; i<len; i++) {
+                primalVal_orig += Dproj[i]*c2[i];
+            }
+
+            // compute modified primal objective
+            primalVal = primalVal_orig + 0.5*normD;
+
+            if (normD >0) {
+                primalVal_orig = primalVal_orig / sqrt(normD);
+            } else {
+                primalVal_orig = 0;
+            }
+
+            // check if we are better than previous best one
+            if (primalVal_orig<primalValBest) {
+                primalValBest = primalVal_orig;
+                for(i=0; i<len; i++) { DprojBest[i] = Dproj[i]; }
+            }
+
+            if (debug) {
+                mexPrintf("...... it=%i\tinnerobj=%1.6f\tprimalobj=%1.6f\tdualobj=%1.6f\tgap=%1.6f\n",
+                          iter, primalVal_orig, primalVal, Fval, primalVal-Fval);
+            }
+
+            if (primalVal<0)
+                break;
+            else if(iter==MAXITER_temp) 
+                MAXITER_temp = MAXITER_temp*2;
+        }
 
         // update beta and alpha
         counter = 0;
@@ -143,147 +171,38 @@ void mexFunction(int nlhs, mxArray *plhs[],
         for(j=0; j<cols; j++) {
             Dcur = Dproj[j];
             for(i=0; (unsigned int) i<jcs[j+1]-jcs[j]; i++) {
-                // update of beta
                 temp = sr[counter]*( Dproj[irs[counter]] - Dcur);
                 betacur = alpha[counter] + L*temp;
-                // projection onto l_inf-cube
                 if(betacur>1) betacur = 1;
                 else if(betacur<-1) betacur = -1;
                 beta[counter] = betacur;
-                // update of alpha
                 alpha[counter] = betacur + factor*(betacur-betaold[counter]);
                 counter++;
             }
         }
-
-        ende = clock();
-        time2 += (float) (ende-start);
-    
-        // compute primal and dual objective
-        if (iter==1 || iter==MAXITER_temp || iter==MAXITER) {
-            start = clock();
-       
-            // compute X=Aalpha
-            for(i=0; i<len; i++) { X[i] = 0; }
-            counter = 0;
-            for(j=0; j<cols; j++) {   
-                for(i=0; (unsigned int) i<jcs[j+1]-jcs[j]; i++)
-                {  
-                    dummy = sr[counter]*beta[counter];
-                    X[j] -= dummy;
-                    X[irs[counter]] += dummy;
-                    counter++;
-                }
-            }
-            for (j=0; j< len; j++) { X[j] = 0.5* X[j]; }  
-        
-            // compute D = (-Aalpha-c2) / c1
-            for(i=0; i<len; i++) { 
-                D[i] = (-X[i]-c2[i])/c1;
-                // Dproj2[i] = D[i];
-                if (D[i]<0) Dproj2[i] = 0;
-                else Dproj2[i] = D[i];
-            }
-    
-            // project on simplex
-            Dproj2 = ProjKSimplex(Dproj2, len, 1);
-    
-            // additional projection 
-            for (i=0; i<len; i++) {
-                // Dproj2[i] = Dproj2[i] * c1;
-                Dproj2[i] = (D[i]-Dproj2[i])*c1;
-                if (Dproj2[i]<0) Dproj2[i] = 0;
-            }
-    
-            // compute dual objective
-            normD = 0; 
-            for(i=0; i<len; i++) { normD += Dproj2[i]*Dproj2[i]; }
-            Fval = -normD;
-
-            // compute primal objective (original)
-            counter = 0;
-            primalVal_orig = 0;
-
-            // 0.5 sum w_ij |f_i - f_j|
-            for(j=0; j<cols; j++) {   
-                Dcur = Dproj2[j];
-                for(i=0; (unsigned int) i<jcs[j+1]-jcs[j]; i++) {  
-                    primalVal_orig += fabs(sr[counter]*( Dproj2[irs[counter]] - Dcur));
-                    counter++;
-                }	  
-            }
-            primalVal_orig = 0.5*primalVal_orig;
-                    
-            // c_1 max_f
-            max_f = 0;
-            for (i=0; i<len; i++) {
-                if (Dproj2[i]>max_f)
-            	    max_f = Dproj2[i];
-            }
-            primalVal_orig += c1*max_f;
-            
-            // <c2,f>
-            for (i=0; i<len; i++) {
-                primalVal_orig += Dproj2[i]*c2[i];
-            }
-
-            primalVal = primalVal_orig + 0.5*normD;
-
-
-            if (normD >0) {
-                primalVal_orig = primalVal_orig/ sqrt(normD);
-            }
-            else {
-                primalVal_orig = 0;
-            }
-
-            ende = clock();
-            time4 += (float) (ende-start);   
-
-
-            // check if we are better than previous best one
-            if (primalVal_orig<primalValBest) {
-                primalValBest = primalVal_orig;
-                for(i=0; i<len; i++) { DprojBest[i] = Dproj2[i]; }
-            }
-        
-  
-            if (debug) {
-                mexPrintf("...... it=%i\tinnerobj=%1.6f\tprimalobj=%1.6f\tdualobj=%1.6f\tgap=%1.6f\n",
-                          iter, primalVal_orig, primalVal, Fval, primalVal-Fval);
-            }
-
-        
-            if (primalVal<0)
-                break;
-            else if(iter==MAXITER_temp) 
-                MAXITER_temp = MAXITER_temp*2; 
-        }
-    }
-  
-    if (debug) {
-        mexPrintf("...... time1: %.2f   time2: %.2f  time3: %.2f  time4: %.2f\n",time1 / (float)CLOCKS_PER_SEC, time2 / (float)CLOCKS_PER_SEC,time3 / (float)CLOCKS_PER_SEC, time4 / (float)CLOCKS_PER_SEC);
+        iter++;
     }
 
     for(i=0; i<len; i++) { Xbest[i] = DprojBest[i]; }
     PrimalObjBest[0] = primalValBest;
-    delete[] X; delete[] betaold; delete[] beta; delete[] Dproj; delete[] Dproj2; delete[] DprojBest; delete[] D;
+    delete[] X; delete[] betaold; delete[] beta; delete[] Dproj; delete[] DprojBest; delete[] D;
 }
 
 
 
 // projection on the k simplex
 double* ProjKSimplex(double* f, int len, int K) {
+    int MAXIT = 10000;
     int i;
-    //double* xnew = new double[len];
     int* IX = new int[len];
-    double sumxnew = 0; 
+    double sumxnew = 0;
     double sumxnew2;
     int counter = len;
     int counter2 = 0;
     for(i=0; i<len; i++) { IX[i] = i; sumxnew += f[i]; }
     int iteration = 0;
-    while(iteration<10000) {
+
+    while(iteration<MAXIT) {
         counter2 = 0;
         sumxnew2 = 0;
         for(i=0; i<counter; i++) {
@@ -299,22 +218,9 @@ double* ProjKSimplex(double* f, int len, int K) {
         sumxnew = sumxnew2;
         iteration++;
     }
-    if(iteration==10000)
+    if(iteration==MAXIT)
         mexPrintf("Bug in Projection: %i, Fval: %i\n", counter, counter2);
     delete[] IX;
     return f;
-    /*x = f;  IX=1:num;  
-    while(cond)
-    xnew = x;
-    xnew(IX) = x(IX) - (sum(x)-k)/length(IX);
-    if(sum(xnew>=0)==num)
-      Projf=xnew; break;
-    else
-      %ixx = find(xnew<0);
-      %IX = setdiff(IX,ixx);
-      IX = find(xnew>0);
-      x = max(xnew,0);
-    end
-    end*/
 }
 

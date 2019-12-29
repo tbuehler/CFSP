@@ -64,6 +64,9 @@ function [dc, maxdens, lambda] = ratiodca_cnstr_maxdens(W, k1, k2, gdeg, ...
 
     f = f(ind_rest);
     gdeg_rest = gdeg(ind_rest);
+
+    W_triu = triu(W_rest,1);    
+    L = 2*max(sum(W_rest.^2));
     
     assert(nnz(W_rest)==length(wval_rest));
     
@@ -102,9 +105,9 @@ function [dc, maxdens, lambda] = ratiodca_cnstr_maxdens(W, k1, k2, gdeg, ...
 
         % solve inner problem
         [f_new, lambda_new, indvec_new, indvec_new1, obj] = ... 
-            solveInnerProblem(f, indvec1, indvec, gam, deg, W_rest, ...
+            solveInnerProblem(f, indvec1, indvec, gam, deg, W_triu, ...
                 wval_rest, ix_rest, jx_rest, gdeg_rest, ind_rest, lambda, ...
-                deg_tilde, assocJ, k1prime, k2prime, gvolJ, degJ, verbosity>2);
+                deg_tilde, assocJ, k1prime, k2prime, gvolJ, degJ, L, verbosity>2);
                
         % check if converged
         reldiff = abs(lambda_new-lambda)/lambda;
@@ -140,9 +143,9 @@ end
 
 % solves the convex inner problem in RatioDCA
 function [f_new, lambda_new, indvec_new, indvec_new1, obj] = ... 
-    solveInnerProblem(f, indvec1, indvec, gam, deg, W_rest, wval_rest, ...
+    solveInnerProblem(f, indvec1, indvec, gam, deg, W_triu, wval_rest, ...
          ix_rest, jx_rest, gdeg_rest, ind_rest, lambda, deg_tilde, ...
-         assocJ, k1prime, k2prime, gvolJ, degJ, debug)
+         assocJ, k1prime, k2prime, gvolJ, degJ, L, debug)
 
     % some parameters
     MAXITER = 1600;%800;
@@ -153,17 +156,13 @@ function [f_new, lambda_new, indvec_new, indvec_new1, obj] = ...
     c2 = gdeg_rest - gam*indvec1 + gam*indvec - lambda*deg_tilde;
     c1 = k1prime*gam + gvolJ - lambda*assocJ;
    
-    % Lipschitz constant
-    L = 2*lambda^2*max(sum(W_rest.^2));
-    num = nnz(W_rest);
-     
     % sanity check: compute primal obj using old f. should be close to 0
     obj_old = lambda * 0.5 * sum(wval_rest.*abs(f(ix_rest) - f(jx_rest))) + c1 * max(f) + sum(c2.*f);
     assert(abs(obj_old) < 1E-8);
 
     % solve inner problem
-    [f_new, obj] = mex_ip_cnstr_maxdens(W_rest, c2, zeros(num,1), ...
-                                        MAXITER, L, lambda, c1, debug);
+    [f_new, obj] = mex_ip_cnstr_maxdens(W_triu, c2, zeros(nnz(W_triu),1), ...
+                                        MAXITER, lambda^2 * L, lambda, c1, debug);
     assert(obj<=0);
    
     % recompute dual objective (for testing)    

@@ -63,7 +63,9 @@ function [clusters, ncut, feasible, lambda] = ratiodca_cnstr_ncut_direct(W, ...
     kprime = k-sum(h(subset));
     degJ = full(sum(W(ind_rest,subset),2));
     totVol_rest = full(sum(sum(W(ind_rest, ind_rest))));
-    Deg = spdiags(deg(ind_rest),0,size(f,1),size(f,1));    
+    Deg = spdiags(deg(ind_rest),0,size(f,1),size(f,1));
+    W_triu = triu(W_rest,1); % diagonal entries play no role in inner problem
+    L = 4*max(sum(W_rest.^2)); % Lipschitz constant used in inner problem    
 
     %% evaluate objective
     [lambda, indvec] = lambda_cnstr_ncut_direct(f, gam, num-length(subset), k, ...
@@ -83,7 +85,8 @@ function [clusters, ncut, feasible, lambda] = ratiodca_cnstr_ncut_direct(W, ...
  
         % solve inner problem
         [f_new, lambda_new, indvec_new, obj] = solveInnerProblem(f, lambda, ...
-           subset, k, W_rest, wval_rest, ix_rest, jx_rest, num, deg, Deg, h, ind_rest, gam, indvec, degJ, totVol_rest, verbosity>2);
+           subset, k, W_triu, wval_rest, ix_rest, jx_rest, num, deg, Deg, ...
+           h, ind_rest, gam, indvec, degJ, totVol_rest, L, verbosity>2);
         
         % check if converged
         reldiff = abs(lambda_new-lambda)/lambda;
@@ -115,6 +118,10 @@ function [clusters, ncut, feasible, lambda] = ratiodca_cnstr_ncut_direct(W, ...
     clusters(subset) = 1;
     clusters(ind_rest) = clusters_temp;
 
+    % sanity checks
+    assert ( abs(balanced_cut(W, sum(W,2), clusters) - ncut) <= 1e-8 );
+    assert ( feasible == (sum(h(clusters==1))<=k && sum(clusters(subset))==length(subset)) );
+
     %% check if partition (S=seed set, S^c) is optimal
     if ~isempty(subset)
         clusters_subset = zeros(num,1);
@@ -142,7 +149,8 @@ end
 
 %% solves the inner problem in RatioDCA
 function [f_new, lambda_new, indvec_new, obj] = solveInnerProblem(f, lambda, ...
-    subset, k, W_rest, wval_rest, ix_rest, jx_rest, num, deg, Deg, h, ind_rest, gam, indvec, degJ, totVol_rest, debug)
+         subset, k, W_triu, wval_rest, ix_rest, jx_rest, num, deg, Deg, h, ...
+         ind_rest, gam, indvec, degJ, totVol_rest, L, debug)
         
     % set parameters
     MAXITER = 5120;
@@ -167,8 +175,13 @@ function [f_new, lambda_new, indvec_new, obj] = solveInnerProblem(f, lambda, ...
     assert(abs(obj_old) < 1E-8);
 
     % solve inner problem with FISTA
-    [f_new, obj] = mex_ip_cnstr_ncut_subset(W_rest, c2, zeros(length(wval_rest),1), ...
-                   MAXITER, 1E-8, 4*max(sum(W_rest.^2)), c1, MAXITER_start, debug);
+    if (c1~=0)
+        [f_new, obj] = mex_ip_cnstr_ncut_subset(W_triu, c2, zeros(nnz(W_triu),1), ...
+                       MAXITER, 1E-8, L, c1, MAXITER_start, debug);
+    else
+        [f_new, obj] = mex_ip_cnstr_ncut(W_triu, c2, zeros(nnz(W_triu),1), ...
+                       MAXITER, 1E-8, L, MAXITER_start, debug);
+    end
     assert(obj<=0);    
 
     % in this case, take the last result
