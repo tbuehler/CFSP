@@ -130,7 +130,7 @@ function [dc_best, maxdens_best, gam_best, dc_all, maxdens_all, gam_all] ...
 % dc_best       Indicator vector of the community with largest density
 % maxdens_best  The corresponding density
 % gam_best      The gamma value used in the optimization
-% dc_all        Cell array of indicator vector for each initialization
+% dc_all        Cell array of indicator vector for each value of gamma
 % maxdens_all   The densities of the corresponding communities
 % gam_all       The corresponding gamma values
 
@@ -157,7 +157,6 @@ function [dc_best, maxdens_best, gam_best, dc_all, maxdens_all, gam_all] ...
                     gam_best = gam;
                     dc_best = dc;
                     maxdens_best = maxdens;
-                    lambda_best = lambda;
                 end
                 if (verbosity>0)
                     fprintf('Found feasible solution with density %.4f for gamma=%.3f and starting point %d/%d.\n', ...
@@ -167,7 +166,7 @@ function [dc_best, maxdens_best, gam_best, dc_all, maxdens_all, gam_all] ...
             else
                 toc1=toc(tic1);
                 if toc1>30
-                    if (verbosity>0)
+                    if (verbosity==1)
                         fprintf('Current gamma is %.3f. Finished initialization %d/%d.\n', ...
                             gam, i, numRuns);
                     end
@@ -201,7 +200,6 @@ function [dc_best, maxdens_best, gam_best, dc_all, maxdens_all, gam_all] ...
         end
         l=l+1;
     end
-    toc1 = toc(tic1);
     
     % in case we aborted all runs
     if sum(maxdens_all==0)
