@@ -2,107 +2,116 @@
 
 
 
-This archive contains a Matlab implementation of the CFSP algorithm for 
-community detection as described in the paper
+This archive contains a Matlab implementation of the CFSP algorithm for the
+constrained normalized cut and densest subgraph problems as described in the paper
  
-T. Buehler, S. S. Rangapuram, S. Setzer and M. Hein
-Constrained fractional set programs and their application in 
-local clustering and community detection
-ICML 2013, pages 624-632
-(Extended version available at http://arxiv.org/abs/1306.3409)
+    T. Buehler, S. S. Rangapuram, S. Setzer and M. Hein
+    Constrained fractional set programs and their application in local clustering and community detection
+    ICML 2013, pages 624-632
+    (Extended version available at http://arxiv.org/abs/1306.3409)
 
-Current version: V1.0
-
-
-
-## Installation
-
-The implementation uses a mex-file to solve the inner problem of the
-RatioDCA. Compile by typing 'make' in the matlab command line.
+The implementation uses mex-files to solve the inner problem of the RatioDCA. 
+Compile them by typing 'make' in the matlab command line.
 
 
 
 ## Documentation
 
-For more information, type 'help functionname' in the Matlab command line.
 
-### Community detection via constrained maximum density:
+### Constrained densest subgraph
+
+Performs community detection on a graph/network by treating the task
+as a constrained local (generalized) maximum density subgraph problem with
+a subset constraint as well as upper and lower bounds on the cardinality.
 
 #### Usage: 
 
-    [dc_best, maxdens_best, gam_best, dc_all,maxdens_all,gam_all] ... 
-        = community_detection(W, k1,k2,gdeg,seed,numRuns,dist_max)
+    [dc_best, maxdens_best, gam_best, dc_all, maxdens_all, gam_all] = community_detection(... 
+                                         W, k1, k2, seed, gdeg, numRuns, dist_max, verbosity)
 
 #### Input: 
 
-    W         The weight matrix.
-    k1        Lower bound
-    k2        Upper bound
-    seed      Index of seed set
-
-#### Optional Input:
-
-    gdeg      Generalized degrees. Default is all ones vector.
-    numRuns   Number of runs. Default is 10.
-    dist_max  Maximum distance from the seed vertices. Default is 2.
+    W               The weight matrix.
+    k1              Lower bound on size of solution.
+    k2              Upper bound on size of solution.
+    seed            Index of seed set.
+    gdeg            Generalized degrees (vertex weights) used in denominator of 
+                    the density. Default is all ones vector.
+    numRuns         Number of runs. Default is 10.
+    dist_max        Maximum distance from the seed vertices. Default is 2.
+    verbosity       How much information is displayed [0-3]. Default is 1.
 
 #### Output:
 
-    dc_best       Indicator vector of the community with largest density
-    maxdens_best  The corresponding density
-    gam_best      The gamma value used in the optimization
-    dc_all        Cell array of indicator vector for each initialization
-    maxdens_all   The densities of the corresponding communities
-    gam_all       The corresponding gamma values
+    dc_best         Indicator vector of the community with largest density.
+    maxdens_best    The corresponding density.
+    gam_best        The gamma value used in the optimization.
+    dc_all          Cell array of indicator vector for each value of gamma.
+    maxdens_all     The densities of the corresponding communities.
+    gam_all         The corresponding gamma values.
 
 
 
-### Constrained Ncut, direct integration of seed subset, volume constraint via penalty term:
+### Constrained normalized cut
+
+Solves the constrained normalized cut problem with a subset constraint and an 
+upper bound on the (generalized) volume. Internally, the subset constraint is 
+directly incorporated into the objective (leading to a problem of lower 
+dimension) and the volume constraint is incorporated as a penalty term. 
 
 #### Usage:
 
-    [clusters, ncut, feasible, lambda] = ratiodca_cnstr_ncut_direct(W,k,hdeg,start,subset,gamma)
+    [clusters, ncut, feasible, lambda, solutions] = constrained_ncut(W, k, h, subset, nRuns, verbosity)
 
 #### Input:
-    W                 Weight matrix (full graph).
-    k                 Upper bound
-    hdeg              Generalized degrees used in constraint.
-    start             Start vector
-    subset            Indices of seed subset
-    gamma             Penalty parameter for volume constraint.
+    W               Weight matrix (full graph).
+    k               Upper bound on the (generalized) volume.
+    h               Generalized degrees (vertex weights) used in constraint.
+    subset          Indices of seed subset.
+    nRuns           Number of runs with random initializations. Default is 10.
+    verbosity       How much information is displayed [0-3]. Default is 1.      
+
 
 #### Output:
 
-    clusters          Thresholded vector f yielding the best objective.
-    ncut              Ncut value of resulting clustering.
-    feasible          True if all constraints are fulfilled.
-    lambda            Corresponding objective.
+    clusters        Thresholded vector f yielding the best objective.
+    ncut            Ncut value of resulting clustering.
+    feasible        True if all constraints are fulfilled.
+    lambda          Corresponding objective.
+    solutions       Obtained clusters for all starting points.
 
 
-### Constrained Ncut, seed constraint and volume constraint via penalty term
+### Soft-constrained normalized cut
+
+Solves the constrained normalized cut problem with a subset constraint and an 
+upper bound on the (generalized) volume. Both constraints are treated as soft 
+constraints controlled by corresponding parameters gamma_sub and gamma_vol. 
+The optimization problem is solved for all given values of gamma_sub and gamma_vol.
 
 #### Usage: 
     
-    [clusters, ncut, feasible, lambda]= ratiodca_cnstr_ncut_penalty(W,k,hdeg,start,subset,gamma1,gamma2)
+    [cluster_grid, ncut_grid, vol_grid, subs_grid] = soft_constrained_ncut(...
+                  W, k, h, subset, gammas_subs, gammas_vol, numRuns, verbosity)
 
 #### Input:
     
-    W                 Weight matrix (full graph).
-    k                 Upper bound
-    hdeg              Generalized degrees used in constraint.
-    start             Start vector
-    subset            Indices of seed subset
-    gamma1             Penalty parameter for seed constraint.
-    gamma2             Penalty parameter for volume constraint.
+    W               Weight matrix (full graph).
+    k               Upper bound on the (generalized) volume.
+    h               Generalized degres (vertex weights) used in constraint.
+    subset          Indices of seed subset.
+    gammas_subs     Array of penalty parameters for subset constraint.
+    gammas_vol      Array of penalty parameters for volume constraint.
+    numRuns         Number of runs. Default is 10.
+    verbosity       How much information is displayed [0-3]. Default is 1.
 
 #### Output:
 
-    clusters          Thresholded vector f yielding the best objective.
-    ncut              Ncut value of resulting clustering.
-    feasible          True if all constraints are fulfilled.
-    lambda            Corresponding objective.
+    cluster_grid    Grid containing clusterings for all values of gammas_subs 
+                    and gammas_vol.
+    ncut_grid       Corresponding ncut values.
+    vol_grid        Corresponding volumes.
+    subs_grid       Corresponding sizes of intersections with subsets.
  
-
 
 
 ## License
