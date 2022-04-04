@@ -117,6 +117,7 @@ function [obj, ind_thresh, feasible, ncut] = find_best_thresh(cuts_thresh, ...
     % compute objective for different thresholds
     balance_thresh = gvol_compl_thresh.*gvol_thresh;
     penalty_thresh = gam * max(0, hvol_thresh-kprime);
+    cuts_thresh(cuts_thresh<0) = 0; % to avoid case -1e-16
     lambda_thresh = (cuts_thresh + penalty_thresh)./balance_thresh;
    
     % find best one (this will automatically exclude the case where the 

@@ -44,14 +44,14 @@ function [dc_best, maxdens_best, gam_best, dc_all, maxdens_all, gam_all] ...
     if (nargin<5); gdeg = ones(size(W,1),1); end
 
     % some checks 
-    assert(issparse(W),'Error! W has to be sparse.');
-    assert(k1<=k2,'Error! k1 cannot be larger than k2.');
-    assert(k1<=size(W,1),'Error! k1 cannot be larger than the size of the graph.');
-    assert(k2>=length(seed),'Error! k2 has to be larger than the seed set.');
-    assert(dist_max>=1,'Error! dist has to be at least 1.');
-    assert(numRuns>=1,'Error! numRuns has to be at least 1.');
-    assert(size(gdeg,1)==size(W,1),'Error! gdeg has wrong format.');
-    assert(~isempty(seed),'Error! Seed set has to be non-empty.');
+    assert(issparse(W),'Wrong Input: W has to be sparse.');
+    assert(k1<=k2,'Wrong Input: k1 cannot be larger than k2.');
+    assert(k1<=size(W,1),'Wrong Input: k1 cannot be larger than the size of the graph.');
+    assert(k2>=length(seed),'Wrong Input: k2 has to be larger than the seed set.');
+    assert(dist_max>=1,'Wrong Input: dist has to be at least 1.');
+    assert(numRuns>=1,'Wrong Input: numRuns has to be at least 1.');
+    assert(size(gdeg,1)==size(W,1),'Wrong Input: gdeg has wrong format.');
+    assert(~isempty(seed),'Wrong Input: Seed set has to be non-empty.');
     
     % extract neighbours of distance at most dist_max 
     if (verbosity>0)
