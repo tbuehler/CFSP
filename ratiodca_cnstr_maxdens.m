@@ -35,9 +35,9 @@ function [dc, maxdens, lambda] = ratiodca_cnstr_maxdens(W, k1, k2, gdeg, ...
         k2 = size(W,1);
         if (verbosity>0); fprintf('Setting k2 to %d.\n', k2); end
     end
-    assert(k2>length(subset),'Error: k2 has to be larger than the size of the subset');
-    assert(k1>=1,'Error: k1 has to be at least 1');
-    assert(k1<=k2,'Error:k1 has to be less or equal to k2');
+    assert(k2>length(subset),'Wrong Input: k2 has to be larger than the size of the subset');
+    assert(k1>=1,'Wrong Input: k1 has to be at least 1');
+    assert(k1<=k2,'Wrong Input: k1 has to be less or equal to k2');
 
     if (verbosity>1)
         fprintf("... Solving maximum density problem for gamma=%.5g:\n", gam);
@@ -90,9 +90,9 @@ function [dc, maxdens, lambda] = ratiodca_cnstr_maxdens(W, k1, k2, gdeg, ...
     end
 
     % compute the value of the objective
-    [lambda, indvec, indvec1] = lambda_cnstr_maxdens(f, gam, k1, k2, deg(ind_rest), ...
-                   gvolJ, degJ, assocJ, wval_rest, ix_rest, jx_rest, gdeg_rest);
-   
+    [lambda, indvec, indvec1] = lambda_cnstr_maxdens(f, gam, k1prime, k2prime, ...
+                   deg(ind_rest), gvolJ, degJ, assocJ, wval_rest, ix_rest, jx_rest, gdeg_rest);
+                   
     % make some output
     if (verbosity>1)
         fprintf('... gamma=%.5g \t lambda=%.5g \n', full(gam), lambda);
